@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "379785663936",
+    "project_id": "ham1-c98d1",
+    "storage_bucket": "ham1-c98d1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:379785663936:android:de405a60dd256bbdcba425",
+        "android_client_info": {
+          "package_name": "com.apol.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDN60Rr4H6_6iEgUSf64OfVYQenhXMhwqs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

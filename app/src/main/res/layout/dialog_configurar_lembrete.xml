@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/rounded_escuro">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Configurar Lembrete"
+        android:textColor="@color/white"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/radio_group_tipo_lembrete"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp">
+
+        <RadioButton
+            android:id="@+id/radio_diario"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Diário"
+            android:textColor="@color/white"/>
+
+        <RadioButton
+            android:id="@+id/radio_mensal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mensal"
+            android:textColor="@color/white"/>
+
+        <RadioButton
+            android:id="@+id/radio_segundos_teste"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Teste Rápido (em segundos)"
+            android:textColor="@color/white"/>
+    </RadioGroup>
+
+    <LinearLayout
+        android:id="@+id/layout_input_dias"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/input_dias_lembrete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Dias (ex: 1, 15, 31)"
+            android:textColorHint="@color/white"
+            android:inputType="text" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_input_horarios"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/input_horarios_lembrete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Horários (ex: 09:00, 18:30)"
+            android:textColorHint="@color/white"
+            android:inputType="text" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_input_segundos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/input_segundos_lembrete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Segundos a partir de agora (ex: 10)"
+            android:textColorHint="@color/white"
+            android:inputType="number" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="24dp">
+
+        <Button
+            android:id="@+id/btn_remover_lembrete"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Remover"
+            android:textColor="@android:color/holo_red_light"/>
+
+        <Button
+            android:id="@+id/btn_salvar_lembrete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Salvar"/>
+    </LinearLayout>
+</LinearLayout>

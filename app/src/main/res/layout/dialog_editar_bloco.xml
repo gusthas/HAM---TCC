@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="24dp"
+    android:background="@drawable/rounded_escuro">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/titulo_bloco"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Finanças"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/white" />
+
+        <EditText
+            android:id="@+id/input_subtitulo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Complemento (ex: Contas)"
+            android:textColorHint="@color/white"
+            android:inputType="text"
+            android:layout_marginTop="8dp" />
+
+        <EditText
+            android:id="@+id/input_anotacoes"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:hint="Escreva suas anotações aqui..."
+            android:gravity="top"
+            android:inputType="textMultiLine"
+            android:background="@android:drawable/editbox_background"
+            android:layout_marginTop="16dp" />
+
+        <EditText
+            android:id="@+id/input_mensagem_notificacao"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Mensagem da notificação"
+            android:textColorHint="@color/white"
+            android:inputType="text"
+            android:layout_marginTop="16dp" />
+
+        <Button
+            android:id="@+id/btn_configurar_lembrete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Configurar Lembrete"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="16dp">
+
+            <Button
+                android:id="@+id/botao_cancelar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cancelar" />
+
+            <Button
+                android:id="@+id/botao_salvar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Salvar"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

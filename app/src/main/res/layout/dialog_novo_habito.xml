@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/rounded_escuro">
+
+    <TextView
+        android:id="@+id/dialog_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Novo Hábito"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/white"
+        android:layout_marginBottom="16dp"/>
+
+    <EditText
+        android:id="@+id/et_habit_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Nome do Hábito (ex: Ler Livro)"
+        android:inputType="textCapSentences"
+        android:textColor="@color/white"
+        android:textColorHint="#BDBDBD"
+        android:backgroundTint="#BDBDBD"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quais dias da semana?"
+        android:textColor="@color/white"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="8dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <ToggleButton
+            android:id="@+id/toggle_dom" android:text="D" style="@style/DayToggle" />
+        <ToggleButton
+            android:id="@+id/toggle_seg" android:text="S" style="@style/DayToggle" />
+        <ToggleButton
+            android:id="@+id/toggle_ter" android:text="T" style="@style/DayToggle" />
+        <ToggleButton
+            android:id="@+id/toggle_qua" android:text="Q" style="@style/DayToggle" />
+        <ToggleButton
+            android:id="@+id/toggle_qui" android:text="Q" style="@style/DayToggle" />
+        <ToggleButton
+            android:id="@+id/toggle_sex" android:text="S" style="@style/DayToggle" />
+        <ToggleButton
+            android:id="@+id/toggle_sab" android:text="S" style="@style/DayToggle" />
+
+    </LinearLayout>
+
+</LinearLayout>

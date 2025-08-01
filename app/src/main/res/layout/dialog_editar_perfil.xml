@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:fillViewport="true"
+    android:overScrollMode="never">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/rounded_semi_transparent"
+        android:padding="20dp">
+
+        <EditText
+            android:id="@+id/edit_nome_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Nome"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#B3FFFFFF"
+            android:inputType="textPersonName" />
+
+        <EditText
+            android:id="@+id/edit_idade_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Idade"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#B3FFFFFF"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/edit_peso_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Peso (kg)"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#B3FFFFFF"
+            android:inputType="numberDecimal" />
+
+        <EditText
+            android:id="@+id/edit_altura_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Altura (m)"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#B3FFFFFF"
+            android:inputType="numberDecimal" />
+
+        <EditText
+            android:id="@+id/edit_genero_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Gênero"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#B3FFFFFF"
+            android:inputType="text" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="20dp"
+            android:gravity="end">
+
+            <Button
+                android:id="@+id/btn_fechar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Fechar" />
+
+            <Button
+                android:id="@+id/btn_salvar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Salvar"
+                android:layout_marginStart="12dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,96 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/rounded_semi_transparent"
+    android:padding="12dp"
+    android:layout_marginBottom="16dp"
+    android:gravity="center_vertical">
+
+    <!-- Checkbox que aparece só no modo seleção -->
+    <CheckBox
+        android:id="@+id/habit_checkbox"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="12dp"
+        android:visibility="gone"
+        android:button="@null"
+        android:background="@drawable/custom_checkbox" />
+
+    <!-- Container vertical para Nome, Dias Seguidos e Mensagem -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Nome do hábito -->
+        <TextView
+            android:id="@+id/habit_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- Dias seguidos -->
+        <TextView
+            android:id="@+id/text_streak_days"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 dias seguidos"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginTop="2dp" />
+
+        <!-- Mensagem motivacional -->
+        <TextView
+            android:id="@+id/text_streak_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Você está melhorando! Continue com esse ritmo."
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:layout_marginTop="0dp" />
+    </LinearLayout>
+
+    <!-- Contagem diária do hábito -->
+    <TextView
+        android:id="@+id/habit_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0"
+        android:textColor="@android:color/white"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginEnd="16dp" />
+
+    <!-- Botão para "desfazer" uma execução -->
+    <ImageButton
+        android:id="@+id/btn_check_done"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/circle_button_bg"
+        android:src="@drawable/ic_remove"
+        android:scaleType="centerInside"
+        android:contentDescription="Marcar como desfeito"
+        android:layout_marginEnd="8dp"
+        app:tint="#FFFFFF"
+        android:visibility="visible" />
+
+    <!-- Botão para "marcar como feito" -->
+    <ImageButton
+        android:id="@+id/btn_check"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/circle_button_bg"
+        android:src="@drawable/ic_check_habit"
+        android:scaleType="centerInside"
+        android:contentDescription="Marcar como feito"
+        app:tint="#FFFFFF"
+        android:visibility="visible" />
+
+</LinearLayout>
