@@ -14,6 +14,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import com.apol.myapplication.data.model.TipoTreino
 import com.apol.myapplication.data.model.TreinoEntity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
@@ -32,27 +33,23 @@ class treinos : AppCompatActivity() {
     private var modoExclusaoAtivo = false
     private lateinit var db: AppDatabase
 
-
+    // --- CICLO DE VIDA DA ACTIVITY ---
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_treinos)
 
-        // Inicializa o banco de dados
         db = AppDatabase.getDatabase(this)
 
-        // Encontra as Views no layout
         fabAddTreino = findViewById(R.id.fab_add_treino)
         btnApagarTreinos = findViewById(R.id.btn_apagar_treinos)
         clickOutsideView = findViewById(R.id.click_outside_view)
         recyclerViewTreinos = findViewById(R.id.recyclerViewTreinos)
 
-        // Configura tudo
         setupWindowInsets()
         setupNavigationBar()
         setupRecyclerView()
         setupListeners()
 
-        // Carrega os dados iniciais do banco
         carregarTreinos()
     }
 
@@ -64,6 +61,19 @@ class treinos : AppCompatActivity() {
         }
     }
 
+    // --- CONFIGURAÇÕES (SETUP) ---
+    private fun setupListeners() {
+        fabAddTreino.setOnClickListener {
+            if (!modoExclusaoAtivo) exibirDialogoAdicionarTreino()
+        }
+        btnApagarTreinos.setOnClickListener {
+            val selecionados = treinosAdapter.getSelecionados()
+            if (selecionados.isNotEmpty()) confirmarExclusao(selecionados)
+        }
+        clickOutsideView.setOnClickListener {
+            if (modoExclusaoAtivo) desativarModoExclusao()
+        }
+    }
 
     private fun setupRecyclerView() {
         treinosAdapter = TreinosAdapter(listaDeTreinos,
@@ -71,7 +81,6 @@ class treinos : AppCompatActivity() {
                 if (modoExclusaoAtivo) {
                     toggleSelecao(treino)
                 } else {
-                    // Abre a tela de detalhes do treino
                     val intent = Intent(this, TreinoDetalheActivity::class.java).apply {
                         putExtra("TREINO_ID", treino.id)
                         putExtra("TREINO_NOME", treino.nome)
@@ -80,30 +89,13 @@ class treinos : AppCompatActivity() {
                 }
             },
             onItemLongClick = { treino ->
-                if (!modoExclusaoAtivo) {
-                    ativarModoExclusao(treino)
-                }
+                if (!modoExclusaoAtivo) ativarModoExclusao(treino)
             }
         )
         recyclerViewTreinos.adapter = treinosAdapter
     }
 
-    private fun setupListeners() {
-        fabAddTreino.setOnClickListener {
-            if (!modoExclusaoAtivo) exibirDialogoAdicionarTreino()
-        }
-
-        btnApagarTreinos.setOnClickListener {
-            val selecionados = treinosAdapter.getSelecionados()
-            if (selecionados.isNotEmpty()) confirmarExclusao(selecionados)
-        }
-
-        clickOutsideView.setOnClickListener {
-            if (modoExclusaoAtivo) desativarModoExclusao()
-        }
-    }
-
-
+    // --- LÓGICA DE DADOS (ROOM) ---
     private fun carregarTreinos() {
         lifecycleScope.launch {
             val treinosDoBanco = db.treinoDao().getAllTreinos()
@@ -113,15 +105,16 @@ class treinos : AppCompatActivity() {
         }
     }
 
-    private fun adicionarTreino(nome: String, iconeResId: Int) {
-        val novoTreino = TreinoEntity(nome = nome, iconeResId = iconeResId)
+    // MODIFICADO: Agora aceita um TipoTreino
+    private fun adicionarTreino(nome: String, iconeResId: Int, tipo: TipoTreino) {
+        val novoTreino = TreinoEntity(nome = nome, iconeResId = iconeResId, tipoDeTreino = tipo)
         lifecycleScope.launch {
             db.treinoDao().insertTreino(novoTreino)
-            carregarTreinos() // Recarrega a lista do banco para atualizar a UI
+            carregarTreinos()
         }
     }
 
-
+    // --- MODO DE EXCLUSÃO ---
     private fun ativarModoExclusao(primeiroItem: TreinoEntity) {
         modoExclusaoAtivo = true
         treinosAdapter.modoExclusaoAtivo = true
@@ -142,7 +135,6 @@ class treinos : AppCompatActivity() {
     private fun toggleSelecao(treino: TreinoEntity) {
         treino.isSelected = !treino.isSelected
         treinosAdapter.notifyDataSetChanged()
-
         if (modoExclusaoAtivo && treinosAdapter.getSelecionados().isEmpty()) {
             desativarModoExclusao()
         }
@@ -156,7 +148,7 @@ class treinos : AppCompatActivity() {
                 lifecycleScope.launch {
                     val idsParaApagar = treinosParaApagar.map { it.id }
                     db.treinoDao().deleteTreinosByIds(idsParaApagar)
-                    carregarTreinos() // Recarrega do banco
+                    carregarTreinos()
                 }
                 desativarModoExclusao()
             }
@@ -164,22 +156,23 @@ class treinos : AppCompatActivity() {
             .show()
     }
 
-
+    // --- DIÁLOGOS ---
     private fun exibirDialogoAdicionarTreino() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_adicionar_treino, null)
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
+        // MODIFICADO: Passa o TipoTreino correto para cada botão
         dialogView.findViewById<Button>(R.id.btn_academia).setOnClickListener {
-            adicionarTreino("Academia", R.drawable.ic_academia)
+            adicionarTreino("Academia", R.drawable.ic_academia, TipoTreino.ACADEMIA)
             dialog.dismiss()
         }
         dialogView.findViewById<Button>(R.id.btn_corrida).setOnClickListener {
-            adicionarTreino("Corrida", R.drawable.ic_corrida)
+            adicionarTreino("Corrida", R.drawable.ic_corrida, TipoTreino.CORRIDA)
             dialog.dismiss()
         }
         dialogView.findViewById<Button>(R.id.btn_esportes).setOnClickListener {
-            adicionarTreino("Esportes", R.drawable.ic_esportes)
+            adicionarTreino("Esportes", R.drawable.ic_esportes, TipoTreino.ESPORTES)
             dialog.dismiss()
         }
         dialogView.findViewById<Button>(R.id.btn_personalizado).setOnClickListener {
@@ -197,7 +190,8 @@ class treinos : AppCompatActivity() {
             .setPositiveButton("Adicionar") { _, _ ->
                 val nomeTreino = editText.text.toString().trim()
                 if (nomeTreino.isNotEmpty()) {
-                    adicionarTreino(nomeTreino, R.drawable.ic_personalizado)
+                    // MODIFICADO: Passa o tipo GENERICO
+                    adicionarTreino(nomeTreino, R.drawable.ic_personalizado, TipoTreino.GENERICO)
                 }
             }
             .setNegativeButton("Cancelar", null)

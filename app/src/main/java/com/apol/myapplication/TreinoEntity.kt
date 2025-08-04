@@ -5,12 +5,20 @@ import androidx.room.Entity
 import androidx.room.Ignore
 import androidx.room.PrimaryKey
 
+enum class TipoTreino {
+    ACADEMIA,
+    CORRIDA,
+    ESPORTES,
+    GENERICO // Para o "Outro"
+}
+
 // O enum permanece o mesmo
 enum class TipoDivisao {
     NAO_DEFINIDO,
     DIAS_DA_SEMANA,
     LETRAS
 }
+
 
 @Entity(tableName = "treinos")
 data class TreinoEntity(
@@ -19,7 +27,8 @@ data class TreinoEntity(
     val nome: String,
     val iconeResId: Int,
     val tipoDivisao: TipoDivisao = TipoDivisao.NAO_DEFINIDO,
-    val detalhes: String = "Toque para adicionar detalhes"
+    val detalhes: String = "Toque para adicionar detalhes",
+    val tipoDeTreino: TipoTreino
 ) {
 
     @Ignore // <-- Diz ao Room para IGNORAR este campo no banco de dados.

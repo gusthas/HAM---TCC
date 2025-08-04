@@ -1,4 +1,4 @@
-
+// Substitua o conteúdo COMPLETO do seu arquivo TreinoDetalheActivity.kt por este:
 package com.apol.myapplication
 
 import android.content.Intent
@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.apol.myapplication.data.model.DivisaoTreino
 import com.apol.myapplication.data.model.TipoDivisao
+import com.apol.myapplication.data.model.TipoTreino
 import com.apol.myapplication.data.model.TreinoEntity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
@@ -35,7 +36,7 @@ class TreinoDetalheActivity : AppCompatActivity() {
     private var treinoAtual: TreinoEntity? = null
     private var modoExclusaoAtivo = false
 
-
+    // --- CICLO DE VIDA ---
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_treino_detalhe)
@@ -88,11 +89,32 @@ class TreinoDetalheActivity : AppCompatActivity() {
                 if (modoExclusaoAtivo) {
                     toggleSelecao(divisao)
                 } else {
-                    val intent = Intent(this, DivisaoDetalheActivity::class.java).apply {
-                        putExtra("DIVISAO_ID", divisao.id)
-                        putExtra("DIVISAO_NOME", divisao.nome)
+                    // MODIFICADO: Lógica de Roteamento
+                    treinoAtual?.let { treino ->
+                        when (treino.tipoDeTreino) {
+                            TipoTreino.ACADEMIA -> {
+                                val intent = Intent(this, DivisaoDetalheActivity::class.java)
+                                intent.putExtra("DIVISAO_ID", divisao.id)
+                                intent.putExtra("DIVISAO_NOME", divisao.nome)
+                                startActivity(intent)
+                            }
+                            TipoTreino.CORRIDA -> {
+                                // TODO: Criar e chamar a CorridaLogActivity
+                                Toast.makeText(this, "Abrir tela de LOG DE CORRIDA para ${divisao.nome}", Toast.LENGTH_SHORT).show()
+                            }
+                            TipoTreino.ESPORTES -> {
+                                // TODO: Criar e chamar a EsportesLogActivity
+                                Toast.makeText(this, "Abrir tela de LOG DE ESPORTES para ${divisao.nome}", Toast.LENGTH_SHORT).show()
+                            }
+                            else -> {
+                                // Para o tipo GENERICO, podemos abrir a mesma tela de academia por padrão
+                                val intent = Intent(this, DivisaoDetalheActivity::class.java)
+                                intent.putExtra("DIVISAO_ID", divisao.id)
+                                intent.putExtra("DIVISAO_NOME", divisao.nome)
+                                startActivity(intent)
+                            }
+                        }
                     }
-                    startActivity(intent)
                 }
             },
             onItemLongClick = { divisao ->
@@ -139,11 +161,7 @@ class TreinoDetalheActivity : AppCompatActivity() {
 
     private fun adicionarNovaDivisaoLetra() {
         val proximaLetraChar = ('A' + listaDivisoes.size).toChar()
-        val novaDivisao = DivisaoTreino(
-            treinoId = treinoId,
-            nome = "Treino $proximaLetraChar",
-            ordem = listaDivisoes.size
-        )
+        val novaDivisao = DivisaoTreino(treinoId = treinoId, nome = "Treino $proximaLetraChar", ordem = listaDivisoes.size)
         lifecycleScope.launch {
             db.treinoDao().insertDivisao(novaDivisao)
             carregarDivisoesDoBanco()

@@ -1,4 +1,4 @@
-// Crie um novo arquivo: DivisaoDetalheActivity.kt
+
 package com.apol.myapplication
 
 import android.os.Bundle
@@ -8,15 +8,15 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
-import com.apol.myapplication.data.model.Exercicio
+import com.apol.myapplication.data.model.LogEntry
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 
 class DivisaoDetalheActivity : AppCompatActivity() {
 
     private lateinit var db: AppDatabase
-    private lateinit var exercicioAdapter: ExercicioAdapter
-    private val listaExercicios = mutableListOf<Exercicio>()
+    private lateinit var logEntryAdapter: LogEntryAdapter
+    private val listaDeLogs = mutableListOf<LogEntry>()
     private var divisaoId: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,8 +28,7 @@ class DivisaoDetalheActivity : AppCompatActivity() {
 
         if (divisaoId == -1L) {
             Toast.makeText(this, "Erro: ID da divisão não encontrado.", Toast.LENGTH_SHORT).show()
-            finish()
-            return
+            finish(); return
         }
 
         db = AppDatabase.getDatabase(this)
@@ -37,70 +36,62 @@ class DivisaoDetalheActivity : AppCompatActivity() {
 
         setupRecyclerView()
         setupListeners()
-
-        carregarExercicios()
+        carregarLogs()
     }
 
-    // Salva tudo automaticamente ao pausar/sair da tela
     override fun onPause() {
         super.onPause()
-        salvarExercicios()
+        salvarLogs()
     }
 
     private fun setupRecyclerView() {
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewExercicios)
-        exercicioAdapter = ExercicioAdapter(listaExercicios) { exercicio, position ->
-            // Ação de apagar um exercício
-            listaExercicios.removeAt(position)
-            exercicioAdapter.notifyItemRemoved(position)
-            exercicioAdapter.notifyItemRangeChanged(position, listaExercicios.size)
+
+
+        logEntryAdapter = LogEntryAdapter(listaDeLogs) { logEntry, position ->
+
+            listaDeLogs.removeAt(position)
+            logEntryAdapter.notifyItemRemoved(position)
+            logEntryAdapter.notifyItemRangeChanged(position, listaDeLogs.size)
             lifecycleScope.launch {
-                db.treinoDao().deleteExercicio(exercicio)
+                db.treinoDao().deleteLogEntry(logEntry)
             }
         }
-        recyclerView.adapter = exercicioAdapter
+        recyclerView.adapter = logEntryAdapter
     }
 
     private fun setupListeners() {
         findViewById<FloatingActionButton>(R.id.fab_add_exercicio).setOnClickListener {
-            val novoExercicio = Exercicio(
-                divisaoId = divisaoId,
-                nome = "",
-                carga = "",
-                series = "",
-                repeticoes = ""
-            )
-            listaExercicios.add(novoExercicio)
-            exercicioAdapter.notifyItemInserted(listaExercicios.size - 1)
+            val novoLog = LogEntry(divisaoId = divisaoId) // MUDOU
+            listaDeLogs.add(novoLog)
+            logEntryAdapter.notifyItemInserted(listaDeLogs.size - 1)
         }
-
         findViewById<ImageButton>(R.id.btn_voltar_divisao).setOnClickListener {
             finish()
         }
     }
 
-    private fun carregarExercicios() {
+    private fun carregarLogs() {
         lifecycleScope.launch {
-            val exerciciosDoBanco = db.treinoDao().getExerciciosByDivisaoId(divisaoId)
-            listaExercicios.clear()
-            listaExercicios.addAll(exerciciosDoBanco)
 
-            // Se a lista estiver vazia, adiciona um primeiro item em branco
-            if (listaExercicios.isEmpty()) {
-                listaExercicios.add(Exercicio(divisaoId = divisaoId, nome = "", carga = "", series = "", repeticoes = ""))
+            val logsDoBanco = db.treinoDao().getLogEntriesByDivisaoId(divisaoId)
+            listaDeLogs.clear()
+            listaDeLogs.addAll(logsDoBanco)
+
+            if (listaDeLogs.isEmpty()) {
+                listaDeLogs.add(LogEntry(divisaoId = divisaoId))
             }
 
             runOnUiThread {
-                exercicioAdapter.notifyDataSetChanged()
+                logEntryAdapter.notifyDataSetChanged()
             }
         }
     }
 
-    private fun salvarExercicios() {
+    private fun salvarLogs() {
         lifecycleScope.launch {
-            // Filtra para salvar apenas os que têm nome (evita salvar linhas vazias)
-            val exerciciosParaSalvar = listaExercicios.filter { it.nome.isNotBlank() }
-            db.treinoDao().upsertExercicios(exerciciosParaSalvar)
+            val logsParaSalvar = listaDeLogs.filter { it.campo1.isNotBlank() }
+            db.treinoDao().upsertLogEntries(logsParaSalvar)
         }
     }
 }
