@@ -15,7 +15,7 @@ class SimpleLineChart @JvmOverloads constructor(
     private var labels: List<String> = emptyList()
     private var animatedFraction: Float = 0f
 
-    // --- CORES ATUALIZADAS: Gráfico em Branco ---
+
     private val paintLine = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         strokeWidth = 8f
@@ -26,7 +26,7 @@ class SimpleLineChart @JvmOverloads constructor(
         color = Color.WHITE
         style = Paint.Style.FILL
     }
-    // --- FIM DAS CORES ATUALIZADAS ---
+
 
     private val paintGrid = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#33FFFFFF") // Grid branco com baixa opacidade

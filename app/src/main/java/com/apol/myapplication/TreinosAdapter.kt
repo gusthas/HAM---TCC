@@ -1,4 +1,4 @@
-// Substitua o conteúdo do seu arquivo TreinosAdapter.kt por este:
+
 package com.apol.myapplication
 
 import android.view.LayoutInflater

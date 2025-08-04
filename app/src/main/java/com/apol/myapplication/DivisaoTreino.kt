@@ -1,4 +1,4 @@
-// Crie um novo arquivo: DivisaoTreino.kt
+
 package com.apol.myapplication.data.model
 
 import androidx.room.Entity
@@ -23,6 +23,6 @@ data class DivisaoTreino(
     var nome: String, // "Segunda-feira", "A", ou um nome personalizado como "Peito e Tríceps"
     val ordem: Int // Para manter a ordem (0 para Domingo, 1 para Segunda... ou 0 para A, 1 para B...)
 ){
-    @Ignore // <-- ADICIONE ESTA ANOTAÇÃO
-    var isSelected: Boolean = false // <-- ADICIONE ESTA LINHA
+    @Ignore
+    var isSelected: Boolean = false
 }

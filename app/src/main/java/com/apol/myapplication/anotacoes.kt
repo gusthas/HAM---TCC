@@ -39,7 +39,7 @@ class anotacoes : AppCompatActivity() {
     private lateinit var blocosAdapter: BlocosAdapter
 
     private val selectedNotes = mutableSetOf<Note>()
-    private val blocosSelecionados = mutableSetOf<Bloco>() // Mutable - coleção genérica não ordenada de elementos que não suporta elementos duplicados e suporta a adição e remoção de elementeos
+    private val blocosSelecionados = mutableSetOf<Bloco>()
 
     private var modoExclusaoAtivo = false
     private var modoExclusaoBlocosAtivo = false
@@ -81,7 +81,7 @@ class anotacoes : AppCompatActivity() {
             insets
         }
 
-        // NavBar - config de botões (exemplo, adapte se precisar)
+
         val navBar = findViewById<LinearLayout>(R.id.navigation_bar)
         navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {
             startActivity(Intent(this, Bemvindouser::class.java))
@@ -109,7 +109,7 @@ class anotacoes : AppCompatActivity() {
         }
 
         if (abrirModoBlocos && abrirSelecaoBlocos) {
-            // Executa esse trecho depois que a interface for montada
+
             window.decorView.post {
                 val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_selecionar_bloco, null)
 

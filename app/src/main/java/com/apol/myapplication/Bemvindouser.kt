@@ -51,7 +51,7 @@ class Bemvindouser : AppCompatActivity() {
         val navBar = findViewById<LinearLayout>(R.id.navigation_bar)
 
         navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {
-            // já está na home
+
         }
 
         navBar.findViewById<LinearLayout>(R.id.botao_anotacoes).setOnClickListener {

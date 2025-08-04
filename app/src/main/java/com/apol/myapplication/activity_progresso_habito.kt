@@ -16,6 +16,7 @@ class activity_progresso_habito : AppCompatActivity() {
 
     private lateinit var tvDiasSeguidos: TextView
     private lateinit var simpleLineChart: SimpleLineChart
+
     private lateinit var tvConstanciaGeral: TextView
     private lateinit var tvConstanciaLabel: TextView
 
@@ -45,7 +46,7 @@ class activity_progresso_habito : AppCompatActivity() {
         habitName = intent.getStringExtra("habit_name") ?: "Hábito"
         findViewById<TextView>(R.id.title_progresso).text = habitName
 
-        // Referências da nova UI
+
         tvDiasSeguidos = findViewById(R.id.tv_dias_seguidos)
         simpleLineChart = findViewById(R.id.simpleLineChart)
         tvConstanciaGeral = findViewById(R.id.tv_constancia_geral)
@@ -55,7 +56,7 @@ class activity_progresso_habito : AppCompatActivity() {
 
         atualizarDiasSeguidos()
 
-        // Nova lógica para os filtros (ChipGroup)
+
         chipGroupFilters.setOnCheckedChangeListener { group, checkedId ->
             when (checkedId) {
                 R.id.chip_semana -> atualizarGraficoEConstancia(DIAS_SEMANA, "Semana")
@@ -64,7 +65,7 @@ class activity_progresso_habito : AppCompatActivity() {
             }
         }
 
-        // Carga inicial
+
         atualizarGraficoEConstancia(DIAS_MES, "Mês")
     }
 

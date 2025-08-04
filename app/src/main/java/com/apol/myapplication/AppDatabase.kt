@@ -1,4 +1,4 @@
-// Substitua o conteúdo completo de AppDatabase.kt
+
 package com.apol.myapplication
 
 import android.content.Context
@@ -13,7 +13,7 @@ import com.apol.myapplication.data.model.Exercicio
 import com.apol.myapplication.data.model.TreinoEntity
 
 
-// 1. ADICIONE AS NOVAS ENTIDADES E MUDE A VERSÃO PARA 3
+
 @Database(entities = [User::class, TreinoEntity::class, DivisaoTreino::class, Exercicio::class], version = 4)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -31,7 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "usuario_database"
                 )
-                    // 3. ADICIONE A NOVA MIGRAÇÃO AQUI
+
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                 INSTANCE = instance
@@ -39,7 +39,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Migração de 1 para 2 (você já tinha)
+
         val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE users ADD COLUMN idade INTEGER NOT NULL DEFAULT 0")
@@ -54,7 +54,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // 3. CRIE A NOVA MIGRAÇÃO DE 2 PARA 3
         val MIGRATION_2_3: Migration = object : Migration(2, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 // Cria a tabela de treinos
@@ -67,7 +66,7 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """)
 
-                // Cria a tabela de divisões de treino
+
                 database.execSQL("""
                     CREATE TABLE IF NOT EXISTS `divisoes_treino` (
                         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
@@ -78,7 +77,7 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """)
 
-                // Cria a tabela de exercícios
+
                 database.execSQL("""
                     CREATE TABLE IF NOT EXISTS `exercicios` (
                         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 

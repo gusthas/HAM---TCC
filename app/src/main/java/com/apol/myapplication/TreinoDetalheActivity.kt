@@ -1,4 +1,4 @@
-// Substitua o conteúdo COMPLETO do seu arquivo TreinoDetalheActivity.kt por este:
+
 package com.apol.myapplication
 
 import android.content.Intent
@@ -35,7 +35,7 @@ class TreinoDetalheActivity : AppCompatActivity() {
     private var treinoAtual: TreinoEntity? = null
     private var modoExclusaoAtivo = false
 
-    // --- CICLO DE VIDA ---
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_treino_detalhe)

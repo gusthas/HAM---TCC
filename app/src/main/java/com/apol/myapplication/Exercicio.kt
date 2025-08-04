@@ -1,4 +1,4 @@
-// Crie um novo arquivo: Exercicio.kt
+
 package com.apol.myapplication.data.model
 
 import androidx.room.Entity

@@ -1,4 +1,4 @@
-// Em data/model/TreinoEntity.kt
+
 package com.apol.myapplication.data.model
 
 import androidx.room.Entity
@@ -21,7 +21,7 @@ data class TreinoEntity(
     val tipoDivisao: TipoDivisao = TipoDivisao.NAO_DEFINIDO,
     val detalhes: String = "Toque para adicionar detalhes"
 ) {
-    // ADICIONE ESTE BLOCO
+
     @Ignore // <-- Diz ao Room para IGNORAR este campo no banco de dados.
     var isSelected: Boolean = false
 }

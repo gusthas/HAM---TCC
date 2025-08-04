@@ -1,4 +1,4 @@
-// Substitua o conteúdo COMPLETO do seu arquivo treinos.kt por este:
+
 package com.apol.myapplication
 
 import android.content.Intent
@@ -32,7 +32,7 @@ class treinos : AppCompatActivity() {
     private var modoExclusaoAtivo = false
     private lateinit var db: AppDatabase
 
-    // --- CICLO DE VIDA DA ACTIVITY ---
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_treinos)
@@ -64,7 +64,7 @@ class treinos : AppCompatActivity() {
         }
     }
 
-    // --- CONFIGURAÇÕES (SETUP) ---
+
     private fun setupRecyclerView() {
         treinosAdapter = TreinosAdapter(listaDeTreinos,
             onItemClick = { treino ->
@@ -103,7 +103,7 @@ class treinos : AppCompatActivity() {
         }
     }
 
-    // --- LÓGICA DE DADOS (ROOM) ---
+
     private fun carregarTreinos() {
         lifecycleScope.launch {
             val treinosDoBanco = db.treinoDao().getAllTreinos()
@@ -121,7 +121,7 @@ class treinos : AppCompatActivity() {
         }
     }
 
-    // --- LÓGICA DO MODO DE EXCLUSÃO ---
+
     private fun ativarModoExclusao(primeiroItem: TreinoEntity) {
         modoExclusaoAtivo = true
         treinosAdapter.modoExclusaoAtivo = true
@@ -164,7 +164,7 @@ class treinos : AppCompatActivity() {
             .show()
     }
 
-    // --- DIÁLOGOS ---
+
     private fun exibirDialogoAdicionarTreino() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_adicionar_treino, null)
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()

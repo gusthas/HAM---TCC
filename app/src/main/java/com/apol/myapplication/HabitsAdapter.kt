@@ -26,7 +26,7 @@ class HabitsAdapter(
 
     private var habits: MutableList<Habit> = mutableListOf()
     var modoExclusaoAtivo: Boolean = false
-    // ALTERAÇÃO 1: Adicionado para notificar quando a seleção fica vazia
+
     var onExclusaoModoVazio: (() -> Unit)? = null
 
     fun submitList(novaLista: List<Habit>) {
@@ -80,7 +80,7 @@ class HabitsAdapter(
                 if (modoExclusaoAtivo) {
                     habit.isSelected = !habit.isSelected
                     notifyItemChanged(adapterPosition)
-                    // ALTERAÇÃO 2: Verifica se a lista de selecionados ficou vazia e notifica a Activity
+
                     if (getSelecionados().isEmpty()) {
                         onExclusaoModoVazio?.invoke()
                     }
@@ -93,7 +93,7 @@ class HabitsAdapter(
                 if (!modoExclusaoAtivo) {
                     modoExclusaoAtivo = true
                     habit.isSelected = true
-                    // ALTERAÇÃO 3: Otimizado para redesenhar apenas o item clicado, igual ao BlocosAdapter
+
                     notifyItemChanged(adapterPosition)
                     onItemLongClick(habit)
                 }

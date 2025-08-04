@@ -12,13 +12,13 @@ data class Bloco(
     var mensagemNotificacao: String = "",
     var isSelected: Boolean = false,
 
-    // Novas propriedades para o lembrete
+
     var tipoLembrete: TipoLembrete = TipoLembrete.NENHUM,
     var diasLembrete: List<Int> = emptyList(),      // Para lembretes mensais (ex: [1, 15, 30])
     var horariosLembrete: List<String> = emptyList(), // Para diário e mensal (ex: ["09:00", "18:30"])
     var segundosLembrete: Long? = null                // Apenas para o modo de teste
 ) {
-    // ... o resto da sua classe (equals, hashCode) permanece igual ...
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

@@ -1,4 +1,4 @@
-// Crie um novo arquivo: ExercicioAdapter.kt
+
 package com.apol.myapplication
 
 import android.text.Editable
@@ -35,12 +35,12 @@ class ExercicioAdapter(
     override fun onBindViewHolder(holder: ExercicioViewHolder, position: Int) {
         val exercicio = listaExercicios[position]
 
-        // Remove os TextWatchers antigos para evitar atualizações incorretas
+
         holder.nome.removeTextChangedListener(holder.itemView.tag as? TextWatcher)
         holder.carga.removeTextChangedListener(holder.itemView.tag as? TextWatcher)
         holder.repeticoes.removeTextChangedListener(holder.itemView.tag as? TextWatcher)
 
-        // Preenche os campos
+
         holder.numero.text = "${position + 1}."
         holder.nome.setText(exercicio.nome)
         holder.carga.setText(exercicio.carga)

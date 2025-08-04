@@ -165,20 +165,7 @@ class configuracoes : AppCompatActivity() {
             val layoutNovaSenha = dialogView.findViewById<LinearLayout>(R.id.layout_nova_senha)
             val btnAlterarSenha = dialogView.findViewById<Button>(R.id.btn_alterar_senha)
 
-            /**
-             * TODO: Programar aqui o envio de código para o e-mail inserido
-             * btnEnviarCodigo.setOnClickListener { ... }
-             */
 
-            /**
-             * TODO: Após validar o código, exibir as caixas de nova senha:
-             * layoutNovaSenha.visibility = View.VISIBLE
-             */
-
-            /**
-             * TODO: Verificar se as duas senhas são iguais e atualizá-las no sistema
-             * btnAlterarSenha.setOnClickListener { ... }
-             */
 
             btnFechar.setOnClickListener {
                 dialog.dismiss()
@@ -200,9 +187,7 @@ class configuracoes : AppCompatActivity() {
 
             alertDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-            // TODO: Aqui o programador pode buscar do banco/local preferences se o usuário já ativou notificações e setar no switch
-            // switchNotificacoes.isChecked = true/false
-            // editHorario.setText("08:00") // exemplo
+
 
             dialogView.findViewById<Button>(R.id.btn_fechar_notificacao).setOnClickListener {
                 alertDialog.dismiss()
@@ -212,15 +197,14 @@ class configuracoes : AppCompatActivity() {
                 val notificacaoAtivada = switchNotificacoes.isChecked
                 val horarioPreferido = editHorario.text.toString()
 
-                // TODO: Aqui o programador deve salvar o estado do switch e o horário no banco ou em SharedPreferences
-                // Pode usar WorkManager ou AlarmManager para agendar a notificação
+
 
                 alertDialog.dismiss()
             }
 
             alertDialog.show()
         }
-// No onCreate(), depois dos outros blocos, coloque algo assim:
+
 
         val sobreAppLayout = findViewById<LinearLayout>(R.id.sobre_app)
         sobreAppLayout.setOnClickListener {
@@ -230,7 +214,7 @@ class configuracoes : AppCompatActivity() {
             // Cria o AlertDialog e aplica fundo transparente para o layout arredondado aparecer direito
             val alertDialog = AlertDialog.Builder(this)
                 .setView(dialogView)
-                .setCancelable(true) // pode fechar tocando fora, mas pode ajustar conforme precisar
+                .setCancelable(true) // pode fechar tocando fora
                 .create()
 
             alertDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
@@ -240,7 +224,7 @@ class configuracoes : AppCompatActivity() {
                 alertDialog.dismiss()
             }
 
-            // TODO: aqui você pode adicionar lógica extra caso queira links, versões do app, créditos etc.
+
 
             alertDialog.show()
         }

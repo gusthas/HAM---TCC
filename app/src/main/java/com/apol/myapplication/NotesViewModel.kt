@@ -13,7 +13,7 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences("app_prefs", 0)
     private val json = Json { encodeDefaults = true }
 
-    // --- Notas ---
+
     private val _notes = MutableStateFlow<List<Note>>(loadNotes())
     val notes: StateFlow<List<Note>> get() = _notes
 

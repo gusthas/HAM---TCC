@@ -1,4 +1,4 @@
-// Substitua o conteúdo de TreinoDao.kt
+
 package com.apol.myapplication
 
 import androidx.room.Dao
@@ -39,7 +39,7 @@ interface TreinoDao {
     @Query("SELECT * FROM divisoes_treino WHERE treinoId = :treinoId ORDER BY ordem ASC")
     suspend fun getDivisoesByTreinoId(treinoId: Long): List<DivisaoTreino>
 
-    @Update // <-- ADICIONE ESTA FUNÇÃO
+    @Update
     suspend fun updateDivisao(divisao: DivisaoTreino)
 
 
@@ -56,7 +56,7 @@ interface TreinoDao {
     @Delete
     suspend fun deleteExercicio(exercicio: Exercicio)
 
-    @Delete // ADICIONE ESTE MÉTODO
+    @Delete
     suspend fun deleteDivisoes(divisoes: List<DivisaoTreino>)
 
 }

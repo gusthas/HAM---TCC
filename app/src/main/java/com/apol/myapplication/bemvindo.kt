@@ -25,7 +25,7 @@ class bemvindo : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bemvindo)
 
-        // Referências aos elementos da UI
+
         textViewSaudacao = findViewById(R.id.textView22)
         textViewAltura = findViewById(R.id.textView23altura)
         textViewPeso = findViewById(R.id.textView24peso)
