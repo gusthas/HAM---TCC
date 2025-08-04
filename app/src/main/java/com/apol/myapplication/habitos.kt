@@ -480,4 +480,4 @@ class habitos : AppCompatActivity() {
 
         atualizarAdapter()
     }
-}
+} // teste
