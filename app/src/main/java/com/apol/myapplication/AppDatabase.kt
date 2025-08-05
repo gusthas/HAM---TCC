@@ -12,7 +12,7 @@ import com.apol.myapplication.data.model.LogEntry
 import com.apol.myapplication.data.model.TreinoEntity
 
 
-@Database(entities = [User::class, TreinoEntity::class, DivisaoTreino::class, LogEntry::class], version = 5)
+@Database(entities = [User::class, TreinoEntity::class, DivisaoTreino::class, LogEntry::class], version = 6)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun userDao(): UserDao
@@ -29,7 +29,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "usuario_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                 INSTANCE = instance
                 instance
@@ -92,6 +92,12 @@ abstract class AppDatabase : RoomDatabase() {
                         FOREIGN KEY(`divisaoId`) REFERENCES `divisoes_treino`(`id`) ON DELETE CASCADE
                     )
                 """)
+            }
+        }
+        val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Adiciona a nova coluna 'templateJson' que pode ser nula
+                database.execSQL("ALTER TABLE treinos ADD COLUMN templateJson TEXT")
             }
         }
     }

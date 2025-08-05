@@ -89,31 +89,18 @@ class TreinoDetalheActivity : AppCompatActivity() {
                 if (modoExclusaoAtivo) {
                     toggleSelecao(divisao)
                 } else {
-                    // MODIFICADO: Lógica de Roteamento
                     treinoAtual?.let { treino ->
-                        when (treino.tipoDeTreino) {
-                            TipoTreino.ACADEMIA -> {
-                                val intent = Intent(this, DivisaoDetalheActivity::class.java)
-                                intent.putExtra("DIVISAO_ID", divisao.id)
-                                intent.putExtra("DIVISAO_NOME", divisao.nome)
-                                startActivity(intent)
-                            }
-                            TipoTreino.CORRIDA -> {
-                                // TODO: Criar e chamar a CorridaLogActivity
-                                Toast.makeText(this, "Abrir tela de LOG DE CORRIDA para ${divisao.nome}", Toast.LENGTH_SHORT).show()
-                            }
-                            TipoTreino.ESPORTES -> {
-                                // TODO: Criar e chamar a EsportesLogActivity
-                                Toast.makeText(this, "Abrir tela de LOG DE ESPORTES para ${divisao.nome}", Toast.LENGTH_SHORT).show()
-                            }
-                            else -> {
-                                // Para o tipo GENERICO, podemos abrir a mesma tela de academia por padrão
-                                val intent = Intent(this, DivisaoDetalheActivity::class.java)
-                                intent.putExtra("DIVISAO_ID", divisao.id)
-                                intent.putExtra("DIVISAO_NOME", divisao.nome)
-                                startActivity(intent)
+                        val intent = when (treino.tipoDeTreino) {
+                            TipoTreino.ACADEMIA -> Intent(this, DivisaoDetalheActivity::class.java)
+                            // MODIFICADO: GENERICO agora abre a tela de configuração de template
+                            TipoTreino.GENERICO, TipoTreino.CORRIDA, TipoTreino.ESPORTES -> {
+                                Intent(this, ConfigurarTemplateActivity::class.java)
                             }
                         }
+                        intent.putExtra("TREINO_ID", treino.id) // Passa o ID do TREINO
+                        intent.putExtra("DIVISAO_ID", divisao.id)
+                        intent.putExtra("DIVISAO_NOME", divisao.nome)
+                        startActivity(intent)
                     }
                 }
             },

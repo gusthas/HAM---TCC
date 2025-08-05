@@ -28,7 +28,8 @@ data class TreinoEntity(
     val iconeResId: Int,
     val tipoDivisao: TipoDivisao = TipoDivisao.NAO_DEFINIDO,
     val detalhes: String = "Toque para adicionar detalhes",
-    val tipoDeTreino: TipoTreino
+    val tipoDeTreino: TipoTreino,
+    var templateJson: String? = null
 ) {
 
     @Ignore // <-- Diz ao Room para IGNORAR este campo no banco de dados.
