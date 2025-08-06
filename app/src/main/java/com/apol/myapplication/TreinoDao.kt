@@ -46,4 +46,7 @@ interface TreinoDao {
 
     @Delete
     suspend fun deleteLogEntry(log: LogEntry)
+
+    @Query("DELETE FROM log_entries WHERE divisaoId = :divisaoId")
+    suspend fun deleteAllLogsByDivisaoId(divisaoId: Long)
 }
