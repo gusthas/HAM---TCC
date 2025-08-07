@@ -90,16 +90,23 @@ class TreinoDetalheActivity : AppCompatActivity() {
                     toggleSelecao(divisao)
                 } else {
                     treinoAtual?.let { treino ->
-                        val intent = when (treino.tipoDeTreino) {
-                            TipoTreino.ACADEMIA -> Intent(this, DivisaoDetalheActivity::class.java)
-                            // MODIFICADO: GENERICO agora abre a tela de configuração de template
-                            TipoTreino.GENERICO, TipoTreino.CORRIDA, TipoTreino.ESPORTES -> {
-                                Intent(this, ConfigurarTemplateActivity::class.java)
+                        val proximaTela = when (treino.tipoDeTreino) {
+                            TipoTreino.ACADEMIA -> DivisaoDetalheActivity::class.java // A tela antiga de exercícios
+                            // Para os outros tipos, verificamos se o template já foi criado
+                            else -> {
+                                if (treino.templateJson.isNullOrBlank()) {
+                                    ConfigurarTemplateActivity::class.java // Se não tem template, vai para a configuração
+                                } else {
+                                    LogActivity::class.java // Se já tem, vai para a tela de log
+                                }
                             }
                         }
-                        intent.putExtra("TREINO_ID", treino.id) // Passa o ID do TREINO
-                        intent.putExtra("DIVISAO_ID", divisao.id)
-                        intent.putExtra("DIVISAO_NOME", divisao.nome)
+
+                        val intent = Intent(this, proximaTela).apply {
+                            putExtra("TREINO_ID", treino.id)
+                            putExtra("DIVISAO_ID", divisao.id)
+                            putExtra("DIVISAO_NOME", divisao.nome)
+                        }
                         startActivity(intent)
                     }
                 }
