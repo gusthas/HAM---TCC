@@ -25,9 +25,6 @@ class Bemvindouser : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_bemvindouser)
-        atualizarDataComSimbolo()
-        configurarBotaoNovoBloco()
-
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -35,48 +32,40 @@ class Bemvindouser : AppCompatActivity() {
             insets
         }
 
-        viewModel = ViewModelProvider(
-            this,
-            ViewModelProvider.AndroidViewModelFactory.getInstance(application)
-        ).get(NotesViewModel::class.java)
+        viewModel = ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory.getInstance(application)).get(NotesViewModel::class.java)
 
+        atualizarDataComSimbolo()
         configurarNavBar()
         configurarBotaoNovoHabito()
         configurarBotaoAnotacaoRapida()
-        configurarBotaoNovoBloco() // <-- Adicionado aqui
+        configurarBotaoNovoBloco()
         carregarTop3Habitos()
+        carregarTop3Blocos()
     }
 
     private fun configurarNavBar() {
         val navBar = findViewById<LinearLayout>(R.id.navigation_bar)
-
-        navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {
-
-        }
-
+        navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {}
         navBar.findViewById<LinearLayout>(R.id.botao_anotacoes).setOnClickListener {
             startActivity(Intent(this, anotacoes::class.java))
         }
-
         navBar.findViewById<LinearLayout>(R.id.botao_habitos).setOnClickListener {
             startActivity(Intent(this, habitos::class.java))
         }
-
         navBar.findViewById<LinearLayout>(R.id.botao_treinos).setOnClickListener {
             startActivity(Intent(this, treinos::class.java))
         }
-
-        navBar.findViewById<LinearLayout>(R.id.botao_progresso).setOnClickListener {
-            startActivity(Intent(this, progresso::class.java))
+        navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
+            startActivity(Intent(this, CronometroActivity::class.java))
         }
-
         navBar.findViewById<LinearLayout>(R.id.botao_configuracoes).setOnClickListener {
             startActivity(Intent(this, configuracoes::class.java))
         }
     }
 
     private fun configurarBotaoNovoHabito() {
-        val btnNovoHabito = findViewById<Button>(R.id.btnNovoHabito)
+        val widgetHabitos = findViewById<View>(R.id.widgetHabitos)
+        val btnNovoHabito = widgetHabitos.findViewById<Button>(R.id.btnNovoHabito)
         btnNovoHabito.setOnClickListener {
             val intent = Intent(this, habitos::class.java)
             intent.putExtra("abrir_dialogo_novo_habito", true)
@@ -101,57 +90,89 @@ class Bemvindouser : AppCompatActivity() {
     }
 
     private fun configurarBotaoNovoBloco() {
-        val btnNovoBloco = findViewById<Button>(R.id.btnNovoBloco)
+        val widgetBlocos = findViewById<View>(R.id.widgetBlocos)
+        val btnNovoBloco = widgetBlocos.findViewById<Button>(R.id.btnNovoBloco)
         btnNovoBloco.setOnClickListener {
             val intent = Intent(this, anotacoes::class.java)
             intent.putExtra("modo_blocos_ativo", true)
-            intent.putExtra("abrir_selecao_blocos", true)
+            intent.putExtra("abrir_dialogo_novo_bloco", true)
             startActivity(intent)
         }
     }
 
+    private fun carregarTop3Blocos() {
+        val widgetBlocos = findViewById<View>(R.id.widgetBlocos)
+        val blocosViews = listOf(
+            widgetBlocos.findViewById<LinearLayout>(R.id.bloco_nota_1),
+            widgetBlocos.findViewById<LinearLayout>(R.id.bloco_nota_2),
+            widgetBlocos.findViewById<LinearLayout>(R.id.bloco_nota_3)
+        )
+        val blocosTexts = listOf(
+            widgetBlocos.findViewById<TextView>(R.id.bloco_text_1),
+            widgetBlocos.findViewById<TextView>(R.id.bloco_text_2),
+            widgetBlocos.findViewById<TextView>(R.id.bloco_text_3)
+        )
+
+        lifecycleScope.launch {
+            viewModel.blocos.collect { listaDeBlocos ->
+                for (i in blocosViews.indices) {
+                    val blocoData = listaDeBlocos.getOrNull(i)
+                    val view = blocosViews[i]
+                    val textView = blocosTexts[i]
+
+                    if (blocoData != null) {
+                        textView.text = blocoData.nome
+                        view.setOnClickListener {
+                            val intent = Intent(this@Bemvindouser, anotacoes::class.java)
+                            intent.putExtra("modo_blocos_ativo", true)
+                            intent.putExtra("abrir_bloco_id", blocoData.id)
+                            startActivity(intent)
+                        }
+                        view.visibility = View.VISIBLE
+                    } else {
+                        view.visibility = View.GONE
+                    }
+                }
+            }
+        }
+    }
 
     private fun carregarTop3Habitos() {
         val prefs = getSharedPreferences("habitos_prefs", Context.MODE_PRIVATE)
-        val listaHabitos = prefs.getStringSet("habits_list", emptySet())?.toList() ?: return
+        val habitsString = prefs.getString("habits_list_ordered", null)
+        val listaHabitos = habitsString?.split(";;;") ?: emptyList()
         val top3 = listaHabitos.take(3)
 
+        val widgetHabitos = findViewById<View>(R.id.widgetHabitos)
         val blocos = listOf(
-            findViewById<LinearLayout>(R.id.blocoLeitura),
-            findViewById<LinearLayout>(R.id.blocoExercicio),
-            findViewById<LinearLayout>(R.id.blocoMeditar)
+            widgetHabitos.findViewById<LinearLayout>(R.id.blocoLeitura),
+            widgetHabitos.findViewById<LinearLayout>(R.id.blocoExercicio),
+            widgetHabitos.findViewById<LinearLayout>(R.id.blocoMeditar)
         )
 
         for (i in blocos.indices) {
             val bloco = blocos[i]
             val habito = top3.getOrNull(i)
-
             val imageView = bloco.getChildAt(0) as ImageView
             val textView = bloco.getChildAt(1) as TextView
 
             if (habito != null) {
                 val emoji = extrairEmoji(habito)
                 val nome = removerEmoji(habito)
-
                 if (emoji.isNotEmpty()) {
                     imageView.setImageDrawable(TextDrawable(this, emoji))
                     imageView.visibility = View.VISIBLE
                 } else {
                     imageView.visibility = View.GONE
                 }
-
                 textView.text = nome
-
                 bloco.setOnClickListener {
                     incrementarHabito(habito)
                 }
             } else {
-                imageView.setImageResource(R.drawable.ic_book)
-                imageView.visibility = View.VISIBLE
+                imageView.visibility = View.GONE
                 textView.text = "Sem hábito"
-                bloco.setOnClickListener {
-                    Toast.makeText(this, "Nenhum hábito aqui ainda!", Toast.LENGTH_SHORT).show()
-                }
+                bloco.setOnClickListener(null)
             }
         }
     }
@@ -162,7 +183,7 @@ class Bemvindouser : AppCompatActivity() {
         val chave = "${nomeHabito}_$hoje"
         val atual = prefs.getInt(chave, 0)
         prefs.edit().putInt(chave, atual + 1).apply()
-        Toast.makeText(this, "Progresso adicionado para \"$nomeHabito\"! Total hoje: ${atual + 1}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Progresso adicionado para \"$nomeHabito\"!", Toast.LENGTH_SHORT).show()
     }
 
     private fun extrairEmoji(texto: String): String {
@@ -182,7 +203,6 @@ class Bemvindouser : AppCompatActivity() {
 
     class TextDrawable(context: Context, private val text: String) : Drawable() {
         private val paint = Paint()
-
         init {
             paint.color = Color.WHITE
             paint.textSize = 64f
@@ -190,34 +210,23 @@ class Bemvindouser : AppCompatActivity() {
             paint.textAlign = Paint.Align.CENTER
             paint.typeface = Typeface.DEFAULT_BOLD
         }
-
         override fun draw(canvas: Canvas) {
             val bounds = bounds
             val x = bounds.centerX().toFloat()
             val y = bounds.centerY() - (paint.descent() + paint.ascent()) / 2
             canvas.drawText(text, x, y, paint)
         }
-
-        override fun setAlpha(alpha: Int) {
-            paint.alpha = alpha
-        }
-
+        override fun setAlpha(alpha: Int) { paint.alpha = alpha }
         override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
-
-        override fun setColorFilter(colorFilter: ColorFilter?) {
-            paint.colorFilter = colorFilter
-        }
+        override fun setColorFilter(colorFilter: ColorFilter?) { paint.colorFilter = colorFilter }
     }
 
     private fun atualizarDataComSimbolo() {
         val calendar = Calendar.getInstance()
         val hora = calendar.get(Calendar.HOUR_OF_DAY)
-
         val simbolo = if (hora in 6..17) "☀️" else "🌙"
-
         val formato = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR"))
         val dataFormatada = formato.format(calendar.time).replaceFirstChar { it.uppercase() }
-
         val dataTextView = findViewById<TextView>(R.id.date_text)
         dataTextView.text = "$dataFormatada  $simbolo"
     }

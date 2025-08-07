@@ -4,10 +4,12 @@ import NotesAdapter
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.*
@@ -21,10 +23,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import android.app.PendingIntent
-import android.provider.Settings
-import com.google.android.play.core.integrity.al
+import java.util.Calendar
 
 class anotacoes : AppCompatActivity() {
 
@@ -33,13 +34,9 @@ class anotacoes : AppCompatActivity() {
     }
 
     private lateinit var viewModel: NotesViewModel
-
     private lateinit var recyclerView: RecyclerView
     private lateinit var notesAdapter: NotesAdapter
     private lateinit var blocosAdapter: BlocosAdapter
-
-    private val selectedNotes = mutableSetOf<Note>()
-    private val blocosSelecionados = mutableSetOf<Bloco>()
 
     private var modoExclusaoAtivo = false
     private var modoExclusaoBlocosAtivo = false
@@ -59,28 +56,16 @@ class anotacoes : AppCompatActivity() {
         criarCanalNotificacao()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
-                android.content.pm.PackageManager.PERMISSION_GRANTED) {
-
-                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
-            }
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
-                android.content.pm.PackageManager.PERMISSION_GRANTED) {
-
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 100)
             }
         }
-
-
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
 
         val navBar = findViewById<LinearLayout>(R.id.navigation_bar)
         navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {
@@ -93,8 +78,8 @@ class anotacoes : AppCompatActivity() {
         navBar.findViewById<LinearLayout>(R.id.botao_treinos).setOnClickListener {
             startActivity(Intent(this, treinos::class.java))
         }
-        navBar.findViewById<LinearLayout>(R.id.botao_progresso).setOnClickListener {
-            startActivity(Intent(this, progresso::class.java))
+        navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
+            startActivity(Intent(this, CronometroActivity::class.java))
         }
         navBar.findViewById<LinearLayout>(R.id.botao_configuracoes).setOnClickListener {
             startActivity(Intent(this, configuracoes::class.java))
@@ -102,47 +87,14 @@ class anotacoes : AppCompatActivity() {
         prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
 
         val abrirModoBlocos = intent.getBooleanExtra("modo_blocos_ativo", false)
-        val abrirSelecaoBlocos = intent.getBooleanExtra("abrir_selecao_blocos", false)
         if (abrirModoBlocos) {
             modoBlocosAtivo = true
             prefs.edit().putBoolean("modo_blocos_ativo", true).apply()
+        } else {
+            modoBlocosAtivo = prefs.getBoolean("modo_blocos_ativo", false)
         }
 
-        if (abrirModoBlocos && abrirSelecaoBlocos) {
-
-            window.decorView.post {
-                val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_selecionar_bloco, null)
-
-                val dialog = AlertDialog.Builder(this)
-                    .setView(dialogView)
-                    .setCancelable(true)
-                    .create()
-
-                dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-                val adicionarBloco: (String) -> Unit = { nomeBloco ->
-                    viewModel.adicionarBloco(Bloco(nome = nomeBloco))
-                    dialog.dismiss()
-                }
-
-                dialogView.findViewById<Button>(R.id.bt_financas).setOnClickListener { adicionarBloco("Finanças") }
-                dialogView.findViewById<Button>(R.id.bt_estudos).setOnClickListener { adicionarBloco("Estudos") }
-                dialogView.findViewById<Button>(R.id.bt_metas).setOnClickListener { adicionarBloco("Metas") }
-                dialogView.findViewById<Button>(R.id.bt_trabalho).setOnClickListener { adicionarBloco("Trabalho") }
-                dialogView.findViewById<Button>(R.id.bt_saude).setOnClickListener { adicionarBloco("Saúde") }
-
-                dialog.show()
-            }
-        }
-
-
-        prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        modoBlocosAtivo = prefs.getBoolean("modo_blocos_ativo", false)
-
-        viewModel = ViewModelProvider(
-            this,
-            ViewModelProvider.AndroidViewModelFactory.getInstance(application)
-        ).get(NotesViewModel::class.java)
+        viewModel = ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory.getInstance(application)).get(NotesViewModel::class.java)
 
         recyclerView = findViewById(R.id.recyclerViewNotes)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -161,23 +113,20 @@ class anotacoes : AppCompatActivity() {
         blocosAdapter = BlocosAdapter(
             onItemClick = { bloco ->
                 if (modoExclusaoBlocosAtivo) {
-                    if (blocosSelecionados.contains(bloco)) blocosSelecionados.remove(bloco)
-                    else blocosSelecionados.add(bloco)
-
+                    bloco.isSelected = !bloco.isSelected
+                    blocosAdapter.notifyDataSetChanged()
                     atualizarBotaoApagar()
                 } else {
                     abrirDialogEditarBloco(bloco)
-
                 }
             },
             onItemLongClick = { bloco ->
                 if (!modoExclusaoBlocosAtivo) ativarModoExclusaoBlocos()
-                blocosSelecionados.add(bloco)
-
+                bloco.isSelected = true
+                blocosAdapter.notifyDataSetChanged()
                 atualizarBotaoApagar()
             }
         )
-
         blocosAdapter.onExclusaoModoVazio = {
             desativarModoExclusaoBlocos()
             esconderBotaoApagar()
@@ -186,30 +135,11 @@ class anotacoes : AppCompatActivity() {
         editNote = findViewById(R.id.edit_note)
         buttonAdd = findViewById(R.id.button_add_note)
         newNoteBox = findViewById(R.id.new_note_box)
+        botaoApagar = findViewById(R.id.button_delete_selected)
 
         buttonAdd.setOnClickListener {
             if (modoBlocosAtivo) {
-                val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_selecionar_bloco, null)
-
-                val dialog = AlertDialog.Builder(this)
-                    .setView(dialogView)
-                    .setCancelable(true)
-                    .create()
-
-                dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-                val adicionarBloco: (String) -> Unit = { nomeBloco ->
-                    viewModel.adicionarBloco(Bloco(nome = nomeBloco))
-                    dialog.dismiss()
-                }
-
-                dialogView.findViewById<Button>(R.id.bt_financas).setOnClickListener { adicionarBloco("Finanças") }
-                dialogView.findViewById<Button>(R.id.bt_estudos).setOnClickListener { adicionarBloco("Estudos") }
-                dialogView.findViewById<Button>(R.id.bt_metas).setOnClickListener { adicionarBloco("Metas") }
-                dialogView.findViewById<Button>(R.id.bt_trabalho).setOnClickListener { adicionarBloco("Trabalho") }
-                dialogView.findViewById<Button>(R.id.bt_saude).setOnClickListener { adicionarBloco("Saúde") }
-
-                dialog.show()
+                mostrarDialogoCriarBloco()
             } else {
                 val text = editNote.text.toString().trim()
                 if (text.isNotEmpty()) {
@@ -219,8 +149,6 @@ class anotacoes : AppCompatActivity() {
                 }
             }
         }
-
-        botaoApagar = findViewById(R.id.button_delete_selected)
 
         botaoApagar.setOnClickListener {
             if (modoBlocosAtivo) {
@@ -243,11 +171,6 @@ class anotacoes : AppCompatActivity() {
                 }
             }
         }
-
-
-
-
-
         botaoApagar.visibility = View.GONE
 
         clickOutsideView = findViewById(R.id.click_outside_view)
@@ -264,12 +187,55 @@ class anotacoes : AppCompatActivity() {
         }
 
         atualizarModoUI()
+
+        // Verifica se a tela foi aberta por um comando da tela principal
+        verificarComandosDeEntrada()
     }
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+
+    private fun verificarComandosDeEntrada() {
+        val deveAbrirDialogo = intent.getBooleanExtra("abrir_dialogo_novo_bloco", false)
+        val blocoIdParaAbrir = intent.getStringExtra("abrir_bloco_id")
+
+        if (deveAbrirDialogo) {
+            window.decorView.post { mostrarDialogoCriarBloco() }
+        } else if (blocoIdParaAbrir != null) {
+            window.decorView.post {
+                lifecycleScope.launch {
+                    val todosOsBlocos = viewModel.blocos.first()
+                    val bloco = todosOsBlocos.find { it.id == blocoIdParaAbrir }
+                    bloco?.let { abrirDialogEditarBloco(it) }
+                }
+            }
+        }
+        // Limpa os extras para não executar a ação novamente
+        intent.removeExtra("abrir_dialogo_novo_bloco")
+        intent.removeExtra("abrir_bloco_id")
+    }
+
+    private fun mostrarDialogoCriarBloco() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_selecionar_bloco, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val adicionarBloco: (String) -> Unit = { nomeBloco ->
+            viewModel.adicionarBloco(Bloco(nome = nomeBloco))
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<Button>(R.id.bt_financas).setOnClickListener { adicionarBloco("Finanças") }
+        dialogView.findViewById<Button>(R.id.bt_estudos).setOnClickListener { adicionarBloco("Estudos") }
+        dialogView.findViewById<Button>(R.id.bt_metas).setOnClickListener { adicionarBloco("Metas") }
+        dialogView.findViewById<Button>(R.id.bt_trabalho).setOnClickListener { adicionarBloco("Trabalho") }
+        dialogView.findViewById<Button>(R.id.bt_saude).setOnClickListener { adicionarBloco("Saúde") }
+
+        dialog.show()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 100) {
             if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -287,7 +253,6 @@ class anotacoes : AppCompatActivity() {
         if (notesAdapter.getSelecionados().isEmpty()) desativarModoExclusao()
     }
 
-
     private fun ativarModoExclusao() {
         modoExclusaoAtivo = true
         notesAdapter.modoExclusaoAtivo = true
@@ -301,7 +266,6 @@ class anotacoes : AppCompatActivity() {
         esconderBotaoApagar()
     }
 
-
     private fun ativarModoExclusaoBlocos() {
         modoExclusaoBlocosAtivo = true
         blocosAdapter.modoExclusaoAtivo = true
@@ -314,7 +278,6 @@ class anotacoes : AppCompatActivity() {
         blocosAdapter.limparSelecao()
         esconderBotaoApagar()
     }
-
 
     private fun mostrarBotaoApagar() {
         botaoApagar.visibility = View.VISIBLE
@@ -330,7 +293,6 @@ class anotacoes : AppCompatActivity() {
         botaoApagar.visibility = if (count > 0) View.VISIBLE else View.GONE
         botaoApagar.contentDescription = "Apagar selecionados ($count)"
     }
-
 
     private fun carregarListaAnotacoes() {
         lifecycleScope.launch {
@@ -388,8 +350,6 @@ class anotacoes : AppCompatActivity() {
             recyclerView.adapter = notesAdapter
             carregarListaAnotacoes()
         }
-
-        // Limpa seleções e modos exclusão
         desativarModoExclusao()
         desativarModoExclusaoBlocos()
     }
@@ -403,6 +363,7 @@ class anotacoes : AppCompatActivity() {
             }
         }
     }
+
     private fun confirmarExclusao(quantidade: Int, tipo: String, onConfirm: () -> Unit) {
         AlertDialog.Builder(this)
             .setTitle("Excluir $quantidade $tipo?")
@@ -412,14 +373,8 @@ class anotacoes : AppCompatActivity() {
             .show()
     }
 
-
-    // Dentro da classe anotacoes
-
-    // SUBSTITUA A FUNÇÃO ANTIGA
     private fun abrirDialogEditarBloco(bloco: Bloco) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_editar_bloco, null)
-
-        // Referências
         val tituloBloco = dialogView.findViewById<TextView>(R.id.titulo_bloco)
         val inputSubtitulo = dialogView.findViewById<EditText>(R.id.input_subtitulo)
         val inputAnotacoes = dialogView.findViewById<EditText>(R.id.input_anotacoes)
@@ -427,24 +382,15 @@ class anotacoes : AppCompatActivity() {
         val btnConfigurarLembrete = dialogView.findViewById<Button>(R.id.btn_configurar_lembrete)
         val btnCancelar = dialogView.findViewById<Button>(R.id.botao_cancelar)
         val btnSalvar = dialogView.findViewById<Button>(R.id.botao_salvar)
-
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setCancelable(true)
-            .create()
+        val dialog = AlertDialog.Builder(this).setView(dialogView).setCancelable(true).create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-        // Preenche com os dados atuais
-        val blocoTemporario = bloco.copy() // Trabalha com uma cópia para não alterar o original até salvar
+        val blocoTemporario = bloco.copy()
         tituloBloco.text = blocoTemporario.nome
         inputSubtitulo.setText(blocoTemporario.subtitulo)
         inputAnotacoes.setText(blocoTemporario.anotacao)
         inputMensagemNotificacao.setText(blocoTemporario.mensagemNotificacao)
-
-        // Ação do botão de configurar lembrete
         btnConfigurarLembrete.setOnClickListener {
             abrirDialogConfigurarLembrete(blocoTemporario) { configAlterada ->
-                // Callback: Quando o lembrete for salvo no outro dialog, atualizamos a cópia temporária
                 blocoTemporario.tipoLembrete = configAlterada.tipoLembrete
                 blocoTemporario.diasLembrete = configAlterada.diasLembrete
                 blocoTemporario.horariosLembrete = configAlterada.horariosLembrete
@@ -452,11 +398,8 @@ class anotacoes : AppCompatActivity() {
                 Toast.makeText(this, "Configuração de lembrete pronta para salvar.", Toast.LENGTH_SHORT).show()
             }
         }
-
         btnCancelar.setOnClickListener { dialog.dismiss() }
-
         btnSalvar.setOnClickListener {
-            // Aplica as mudanças da cópia temporária para o objeto original
             bloco.subtitulo = inputSubtitulo.text.toString().trim()
             bloco.anotacao = inputAnotacoes.text.toString().trim()
             bloco.mensagemNotificacao = inputMensagemNotificacao.text.toString().trim()
@@ -464,29 +407,22 @@ class anotacoes : AppCompatActivity() {
             bloco.diasLembrete = blocoTemporario.diasLembrete
             bloco.horariosLembrete = blocoTemporario.horariosLembrete
             bloco.segundosLembrete = blocoTemporario.segundosLembrete
-
             viewModel.updateBloco(bloco)
-
-            // Cancela agendamentos antigos e agenda os novos
             cancelarLembretesParaBloco(bloco)
             if (bloco.tipoLembrete != TipoLembrete.NENHUM) {
                 agendarLembretesParaBloco(bloco)
             } else {
                 Toast.makeText(this, "Lembrete removido.", Toast.LENGTH_SHORT).show()
             }
-
             dialog.dismiss()
         }
         dialog.show()
     }
 
-    // SUBSTITUA A FUNÇÃO ANTIGA
     private fun abrirDialogConfigurarLembrete(bloco: Bloco, onSave: (Bloco) -> Unit) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_configurar_lembrete, null)
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-        // Referências
         val radioGroup = dialogView.findViewById<RadioGroup>(R.id.radio_group_tipo_lembrete)
         val radioDiario = dialogView.findViewById<RadioButton>(R.id.radio_diario)
         val radioMensal = dialogView.findViewById<RadioButton>(R.id.radio_mensal)
@@ -503,19 +439,16 @@ class anotacoes : AppCompatActivity() {
             layoutHorarios.visibility = if (tipo == TipoLembrete.DIARIO || tipo == TipoLembrete.MENSAL) View.VISIBLE else View.GONE
             layoutSegundos.visibility = if (tipo == TipoLembrete.SEGUNDOS_TESTE) View.VISIBLE else View.GONE
         }
-
-        // Preencher com dados existentes
         when (bloco.tipoLembrete) {
             TipoLembrete.DIARIO -> radioDiario.isChecked = true
             TipoLembrete.MENSAL -> radioMensal.isChecked = true
             TipoLembrete.SEGUNDOS_TESTE -> radioSegundosTeste.isChecked = true
-            else -> { /* Nenhum selecionado */ }
+            else -> {}
         }
         updateUi(bloco.tipoLembrete)
         inputDias.setText(bloco.diasLembrete.joinToString(", "))
         inputHorarios.setText(bloco.horariosLembrete.joinToString(", "))
         inputSegundos.setText(bloco.segundosLembrete?.toString() ?: "")
-
         radioGroup.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
                 R.id.radio_diario -> updateUi(TipoLembrete.DIARIO)
@@ -523,11 +456,8 @@ class anotacoes : AppCompatActivity() {
                 R.id.radio_segundos_teste -> updateUi(TipoLembrete.SEGUNDOS_TESTE)
             }
         }
-
-        // Botão Salvar
         dialogView.findViewById<Button>(R.id.btn_salvar_lembrete).setOnClickListener {
-            val blocoConfigurado = bloco.copy() // Cria uma cópia para passar de volta
-
+            val blocoConfigurado = bloco.copy()
             when (radioGroup.checkedRadioButtonId) {
                 R.id.radio_diario -> {
                     blocoConfigurado.tipoLembrete = TipoLembrete.DIARIO
@@ -536,9 +466,7 @@ class anotacoes : AppCompatActivity() {
                 }
                 R.id.radio_mensal -> {
                     blocoConfigurado.tipoLembrete = TipoLembrete.MENSAL
-                    blocoConfigurado.diasLembrete = inputDias.text.toString()
-                        .split(',')
-                        .mapNotNull { it.trim().toIntOrNull()?.coerceIn(1, 31) }
+                    blocoConfigurado.diasLembrete = inputDias.text.toString().split(',').mapNotNull { it.trim().toIntOrNull()?.coerceIn(1, 31) }
                     blocoConfigurado.segundosLembrete = null
                 }
                 R.id.radio_segundos_teste -> {
@@ -549,46 +477,29 @@ class anotacoes : AppCompatActivity() {
                 }
                 else -> blocoConfigurado.tipoLembrete = TipoLembrete.NENHUM
             }
-
             if (blocoConfigurado.tipoLembrete == TipoLembrete.DIARIO || blocoConfigurado.tipoLembrete == TipoLembrete.MENSAL) {
-                blocoConfigurado.horariosLembrete = inputHorarios.text.toString()
-                    .split(',')
-                    .map { it.trim() }
-                    .filter { it.matches(Regex("\\d{1,2}:\\d{2}")) } // Valida formato HH:mm
+                blocoConfigurado.horariosLembrete = inputHorarios.text.toString().split(',').map { it.trim() }.filter { it.matches(Regex("\\d{1,2}:\\d{2}")) }
             }
-
-            onSave(blocoConfigurado) // Chama o callback com a nova configuração
+            onSave(blocoConfigurado)
             dialog.dismiss()
         }
-
-        // Botão Remover
         dialogView.findViewById<Button>(R.id.btn_remover_lembrete).setOnClickListener {
-            val blocoLimpo = bloco.copy(
-                tipoLembrete = TipoLembrete.NENHUM,
-                diasLembrete = emptyList(),
-                horariosLembrete = emptyList(),
-                segundosLembrete = null
-            )
+            val blocoLimpo = bloco.copy(tipoLembrete = TipoLembrete.NENHUM, diasLembrete = emptyList(), horariosLembrete = emptyList(), segundosLembrete = null)
             onSave(blocoLimpo)
             dialog.dismiss()
         }
-
         dialog.show()
     }
 
-    // SUBSTITUA A FUNÇÃO ANTIGA (ESTA É A CORREÇÃO MAIS IMPORTANTE)
     private fun agendarLembretesParaBloco(bloco: Bloco) {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val context = this
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
             Toast.makeText(this, "Permissão para agendar alarmes exatos é necessária.", Toast.LENGTH_LONG).show()
             Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).also { startActivity(it) }
             return
         }
-
-        var requestCodeCounter = 0 // Para garantir que cada alarme do mesmo bloco seja único
-
+        var requestCodeCounter = 0
         when (bloco.tipoLembrete) {
             TipoLembrete.SEGUNDOS_TESTE -> {
                 val segundos = bloco.segundosLembrete ?: return
@@ -601,17 +512,16 @@ class anotacoes : AppCompatActivity() {
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
                 Toast.makeText(this, "Lembrete de teste agendado para daqui a $segundos segundos!", Toast.LENGTH_SHORT).show()
             }
-
             TipoLembrete.DIARIO -> {
                 if (bloco.horariosLembrete.isEmpty()) return
                 bloco.horariosLembrete.forEach { horarioStr ->
                     val (hora, minuto) = parseHorario(horarioStr) ?: return@forEach
-                    val calendar = java.util.Calendar.getInstance().apply {
-                        set(java.util.Calendar.HOUR_OF_DAY, hora)
-                        set(java.util.Calendar.MINUTE, minuto)
-                        set(java.util.Calendar.SECOND, 0)
-                        if (before(java.util.Calendar.getInstance())) {
-                            add(java.util.Calendar.DAY_OF_YEAR, 1)
+                    val calendar = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, hora)
+                        set(Calendar.MINUTE, minuto)
+                        set(Calendar.SECOND, 0)
+                        if (before(Calendar.getInstance())) {
+                            add(Calendar.DAY_OF_YEAR, 1)
                         }
                     }
                     val pendingIntent = getPendingIntent(context, bloco, bloco.id.hashCode() + requestCodeCounter++)
@@ -619,7 +529,6 @@ class anotacoes : AppCompatActivity() {
                 }
                 Toast.makeText(this, "Lembrete(s) diário(s) agendado(s)!", Toast.LENGTH_SHORT).show()
             }
-
             TipoLembrete.MENSAL -> {
                 if (bloco.diasLembrete.isEmpty() || bloco.horariosLembrete.isEmpty()) return
                 bloco.diasLembrete.forEach { dia ->
@@ -634,41 +543,26 @@ class anotacoes : AppCompatActivity() {
                 }
                 Toast.makeText(this, "Lembrete(s) mensal(is) agendado(s)!", Toast.LENGTH_SHORT).show()
             }
-            else -> {} // TipoLembrete.NENHUM
+            else -> {}
         }
     }
 
-    // ADICIONE ESTA FUNÇÃO AUXILIAR para parsear o horário
     private fun parseHorario(horarioStr: String): Pair<Int, Int>? {
         val parts = horarioStr.split(":").mapNotNull { it.toIntOrNull() }
         return if (parts.size == 2) parts[0] to parts[1] else null
     }
 
-// Adicione estas duas funções dentro da sua classe 'anotacoes'
-
     private fun getPendingIntent(context: Context, bloco: Bloco, requestCode: Int): PendingIntent {
         val intent = Intent(context, BlocoNotificationReceiver::class.java).apply {
-            // Informações que o Receiver usará para criar a notificação
             putExtra("titulo", bloco.nome + if (bloco.subtitulo.isNotEmpty()) " - ${bloco.subtitulo}" else "")
             putExtra("mensagem", bloco.mensagemNotificacao.ifEmpty { "Você tem um lembrete para este bloco." })
-            putExtra("bloco_id", bloco.id) // ID para identificação
+            putExtra("bloco_id", bloco.id)
         }
-
-        // O requestCode deve ser único para cada alarme
-        return PendingIntent.getBroadcast(
-            context,
-            requestCode,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        return PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun cancelarLembretesParaBloco(bloco: Bloco) {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
-        // É difícil saber exatamente quantos alarmes foram criados,
-        // então cancelamos uma faixa de possíveis request codes.
-        // 31 dias * 24 horários = 744. Cancelar 1000 por segurança é uma boa abordagem.
         for (i in 0 until 1000) {
             val requestCode = bloco.id.hashCode() + i
             val pendingIntent = getPendingIntent(this, bloco, requestCode)
@@ -676,45 +570,31 @@ class anotacoes : AppCompatActivity() {
         }
     }
 
-    // Função auxiliar para encontrar a próxima ocorrência mensal válida
-    private fun getNextMonthlyOccurrence(dia: Int, hora: Int, minuto: Int): java.util.Calendar? {
-        val agora = java.util.Calendar.getInstance()
-        var proximoAgendamento = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.HOUR_OF_DAY, hora)
-            set(java.util.Calendar.MINUTE, minuto)
-            set(java.util.Calendar.SECOND, 0)
+    private fun getNextMonthlyOccurrence(dia: Int, hora: Int, minuto: Int): Calendar? {
+        val agora = Calendar.getInstance()
+        var proximoAgendamento = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hora)
+            set(Calendar.MINUTE, minuto)
+            set(Calendar.SECOND, 0)
         }
-
-        // Tenta no mês atual
-        val maxDayOfMonth = proximoAgendamento.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+        val maxDayOfMonth = proximoAgendamento.getActualMaximum(Calendar.DAY_OF_MONTH)
         val diaValido = if (dia > maxDayOfMonth) maxDayOfMonth else dia
-        proximoAgendamento.set(java.util.Calendar.DAY_OF_MONTH, diaValido)
-
+        proximoAgendamento.set(Calendar.DAY_OF_MONTH, diaValido)
         if (proximoAgendamento.after(agora)) {
-            return proximoAgendamento // Encontrou no mês atual
+            return proximoAgendamento
         }
-
-        // Se não, tenta no próximo mês
-        proximoAgendamento.add(java.util.Calendar.MONTH, 1)
-        val maxDayOfNextMonth = proximoAgendamento.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+        proximoAgendamento.add(Calendar.MONTH, 1)
+        val maxDayOfNextMonth = proximoAgendamento.getActualMaximum(Calendar.DAY_OF_MONTH)
         val diaValidoProximoMes = if (dia > maxDayOfNextMonth) maxDayOfNextMonth else dia
-        proximoAgendamento.set(java.util.Calendar.DAY_OF_MONTH, diaValidoProximoMes)
-
+        proximoAgendamento.set(Calendar.DAY_OF_MONTH, diaValidoProximoMes)
         return proximoAgendamento
     }
+
     private fun criarCanalNotificacao() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val canal = NotificationChannel(
-                "canal_lembrete",
-                "Lembretes",
-                NotificationManager.IMPORTANCE_HIGH
-            )
+            val canal = NotificationChannel("canal_lembrete", "Lembretes", NotificationManager.IMPORTANCE_HIGH)
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(canal)
         }
     }
-
-
 }
-
-

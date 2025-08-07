@@ -10,7 +10,6 @@
     android:padding="4dp"
     android:weightSum="6">
 
-    <!-- Início -->
     <LinearLayout
         android:id="@+id/botao_inicio"
         android:layout_width="0dp"
@@ -33,7 +32,6 @@
             android:textSize="12sp"/>
     </LinearLayout>
 
-    <!-- Anotações -->
     <LinearLayout
         android:id="@+id/botao_anotacoes"
         android:layout_width="0dp"
@@ -56,7 +54,6 @@
             android:textSize="12sp"/>
     </LinearLayout>
 
-    <!-- Hábitos -->
     <LinearLayout
         android:id="@+id/botao_habitos"
         android:layout_width="0dp"
@@ -79,7 +76,6 @@
             android:textSize="12sp"/>
     </LinearLayout>
 
-    <!-- Treinos -->
     <LinearLayout
         android:id="@+id/botao_treinos"
         android:layout_width="0dp"
@@ -102,9 +98,8 @@
             android:textSize="12sp"/>
     </LinearLayout>
 
-    <!-- Progresso -->
     <LinearLayout
-        android:id="@+id/botao_progresso"
+        android:id="@+id/botao_cronometro"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
@@ -114,18 +109,17 @@
         <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:src="@drawable/ic_progress"
+            android:src="@drawable/ic_timer"
             android:tint="#DDFFFFFF"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Progresso"
+            android:text="Cronômetro"
             android:textColor="#DDFFFFFF"
             android:textSize="12sp"/>
     </LinearLayout>
 
-    <!-- Configurações -->
     <LinearLayout
         android:id="@+id/botao_configuracoes"
         android:layout_width="0dp"

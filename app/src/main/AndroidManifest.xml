@@ -74,7 +74,7 @@
             android:name=".configuracoes"
             android:exported="false" />
         <activity
-            android:name=".progresso"
+            android:name=".CronometroActivity"
             android:exported="false" />
         <activity
             android:name=".treinos"

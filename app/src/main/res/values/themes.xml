@@ -52,5 +52,11 @@
         <item name="android:textColor">@color/chip_text_color</item>
         <item name="chipStrokeWidth">0dp</item>
     </style>
+        <!-- cronometro-->
+    <style name="NumberPickerTheme" parent="Theme.AppCompat.Light">
+        <item name="colorAccent">@color/roxo</item>
+        <item name="android:textColorPrimary">@color/white</item>
+        <item name="android:background">@color/preto_escuro</item>
+    </style>
 
 </resources>

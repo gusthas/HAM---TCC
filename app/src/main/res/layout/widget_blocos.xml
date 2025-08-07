@@ -16,7 +16,9 @@
         app:cardCornerRadius="24dp"
         app:cardElevation="0dp"
         app:strokeColor="@android:color/transparent"
-        tools:ignore="MissingConstraints">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -24,7 +26,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Título e botão -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -62,7 +63,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="12dp" />
 
-            <!-- Blocos de Organização -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -70,8 +70,8 @@
                 android:orientation="horizontal"
                 android:weightSum="3">
 
-                <!-- Projetos -->
                 <LinearLayout
+                    android:id="@+id/bloco_nota_1"
                     android:layout_width="0dp"
                     android:layout_height="80dp"
                     android:layout_margin="4dp"
@@ -83,16 +83,17 @@
                     android:padding="6dp">
 
                     <TextView
+                        android:id="@+id/bloco_text_1"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Projetos"
+                        tools:text="Projetos"
                         android:textColor="#FFFFFF"
                         android:textSize="12sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Metas -->
                 <LinearLayout
+                    android:id="@+id/bloco_nota_2"
                     android:layout_width="0dp"
                     android:layout_height="80dp"
                     android:layout_margin="4dp"
@@ -104,16 +105,17 @@
                     android:padding="6dp">
 
                     <TextView
+                        android:id="@+id/bloco_text_2"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Metas"
+                        tools:text="Metas"
                         android:textColor="#FFFFFF"
                         android:textSize="12sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Finanças -->
                 <LinearLayout
+                    android:id="@+id/bloco_nota_3"
                     android:layout_width="0dp"
                     android:layout_height="80dp"
                     android:layout_margin="4dp"
@@ -125,9 +127,10 @@
                     android:padding="6dp">
 
                     <TextView
+                        android:id="@+id/bloco_text_3"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Finanças"
+                        tools:text="Finanças"
                         android:textColor="#FFFFFF"
                         android:textSize="12sp"
                         android:textStyle="bold" />

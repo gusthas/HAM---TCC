@@ -368,8 +368,8 @@ class habitos : AppCompatActivity() {
         navBar.findViewById<LinearLayout>(R.id.botao_treinos).setOnClickListener {
             startActivity(Intent(this, treinos::class.java))
         }
-        navBar.findViewById<LinearLayout>(R.id.botao_progresso).setOnClickListener {
-            startActivity(Intent(this, progresso::class.java))
+        navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
+            startActivity(Intent(this, CronometroActivity::class.java))
         }
         navBar.findViewById<LinearLayout>(R.id.botao_configuracoes).setOnClickListener {
             startActivity(Intent(this, configuracoes::class.java))
@@ -480,4 +480,4 @@ class habitos : AppCompatActivity() {
 
         atualizarAdapter()
     }
-} // teste
+}
