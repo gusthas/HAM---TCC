@@ -84,43 +84,23 @@ class TreinoDetalheActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
+        val recyclerViewDivisoes = findViewById<RecyclerView>(R.id.recyclerViewDivisoes)
         divisaoAdapter = DivisaoAdapter(listaDivisoes,
             onItemClick = { divisao ->
                 if (modoExclusaoAtivo) {
                     toggleSelecao(divisao)
                 } else {
-                    treinoAtual?.let { treino ->
-                        val proximaTela = when (treino.tipoDeTreino) {
-                            TipoTreino.ACADEMIA -> DivisaoDetalheActivity::class.java // A tela antiga de exercícios
-                            // Para os outros tipos, verificamos se o template já foi criado
-                            else -> {
-                                if (treino.templateJson.isNullOrBlank()) {
-                                    ConfigurarTemplateActivity::class.java // Se não tem template, vai para a configuração
-                                } else {
-                                    LogActivity::class.java // Se já tem, vai para a tela de log
-                                }
-                            }
-                        }
-
-                        val intent = Intent(this, proximaTela).apply {
-                            putExtra("TREINO_ID", treino.id)
-                            putExtra("DIVISAO_ID", divisao.id)
-                            putExtra("DIVISAO_NOME", divisao.nome)
-                        }
-                        startActivity(intent)
+                    // LÓGICA CORRETA: Sempre abre a tela de anotações (DivisaoDetalheActivity)
+                    val intent = Intent(this, DivisaoDetalheActivity::class.java).apply {
+                        putExtra("TREINO_ID", treinoId)
+                        putExtra("DIVISAO_ID", divisao.id)
+                        putExtra("DIVISAO_NOME", divisao.nome)
                     }
+                    startActivity(intent)
                 }
             },
-            onItemLongClick = { divisao ->
-                if (!modoExclusaoAtivo) {
-                    ativarModoExclusao(divisao)
-                }
-            },
-            onEditClick = { divisao ->
-                if (!modoExclusaoAtivo) {
-                    exibirDialogoRenomearDivisao(divisao)
-                }
-            }
+            onItemLongClick = { divisao -> if (!modoExclusaoAtivo) ativarModoExclusao(divisao) },
+            onEditClick = { divisao -> if (!modoExclusaoAtivo) exibirDialogoRenomearDivisao(divisao) }
         )
         recyclerViewDivisoes.adapter = divisaoAdapter
     }

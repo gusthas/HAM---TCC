@@ -1,4 +1,4 @@
-// Substitua o conteúdo de DivisaoAdapter.kt
+
 package com.apol.myapplication
 
 import android.view.LayoutInflater
@@ -14,7 +14,7 @@ import com.apol.myapplication.data.model.DivisaoTreino
 class DivisaoAdapter(
     private var listaDivisoes: MutableList<DivisaoTreino>,
     private val onItemClick: (DivisaoTreino) -> Unit,
-    private val onItemLongClick: (DivisaoTreino) -> Unit, // Adicionado
+    private val onItemLongClick: (DivisaoTreino) -> Unit,
     private val onEditClick: (DivisaoTreino) -> Unit
 ) : RecyclerView.Adapter<DivisaoAdapter.DivisaoViewHolder>() {
 
@@ -41,27 +41,18 @@ class DivisaoAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DivisaoViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_divisao_treino, parent, false)
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_divisao_treino, parent, false)
         return DivisaoViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: DivisaoViewHolder, position: Int) {
         val divisaoAtual = listaDivisoes[position]
         holder.nome.text = divisaoAtual.nome
-
-        // Oculta o botão de editar durante o modo de exclusão
         holder.btnEditar.visibility = if (modoExclusaoAtivo) View.GONE else View.VISIBLE
-
-        val background = if (divisaoAtual.isSelected) R.drawable.bg_selected_item
-        else R.drawable.rounded_semi_transparent
+        val background = if (divisaoAtual.isSelected) R.drawable.bg_selected_item else R.drawable.rounded_semi_transparent
         holder.container.background = ContextCompat.getDrawable(holder.itemView.context, background)
-
         holder.itemView.setOnClickListener { onItemClick(divisaoAtual) }
-        holder.itemView.setOnLongClickListener {
-            onItemLongClick(divisaoAtual)
-            true
-        }
+        holder.itemView.setOnLongClickListener { onItemLongClick(divisaoAtual); true }
         holder.btnEditar.setOnClickListener { onEditClick(divisaoAtual) }
     }
 

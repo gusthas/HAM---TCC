@@ -2,21 +2,25 @@
 package com.apol.myapplication
 
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
-import com.apol.myapplication.data.model.LogEntry
+import com.apol.myapplication.data.model.TreinoNota
+import com.apol.myapplication.data.model.TreinoNotaAdapter
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 
 class DivisaoDetalheActivity : AppCompatActivity() {
 
     private lateinit var db: AppDatabase
-    private lateinit var logEntryAdapter: LogEntryAdapter
-    private val listaDeLogs = mutableListOf<LogEntry>()
+    private lateinit var notaAdapter: TreinoNotaAdapter
+    private val listaDeNotas = mutableListOf<TreinoNota>()
     private var divisaoId: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,74 +28,87 @@ class DivisaoDetalheActivity : AppCompatActivity() {
         setContentView(R.layout.activity_divisao_detalhe)
 
         divisaoId = intent.getLongExtra("DIVISAO_ID", -1L)
-        val divisaoNome = intent.getStringExtra("DIVISAO_NOME") ?: "Exercícios"
-
         if (divisaoId == -1L) {
             Toast.makeText(this, "Erro: ID da divisão não encontrado.", Toast.LENGTH_SHORT).show()
             finish(); return
         }
 
         db = AppDatabase.getDatabase(this)
-        findViewById<TextView>(R.id.nome_divisao_detalhe).text = divisaoNome
+        findViewById<TextView>(R.id.nome_divisao_detalhe).text = intent.getStringExtra("DIVISAO_NOME") ?: "Anotações"
 
         setupRecyclerView()
         setupListeners()
-        carregarLogs()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        salvarLogs()
+        carregarNotas()
     }
 
     private fun setupRecyclerView() {
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewExercicios)
-
-
-        logEntryAdapter = LogEntryAdapter(listaDeLogs) { logEntry, position ->
-
-            listaDeLogs.removeAt(position)
-            logEntryAdapter.notifyItemRemoved(position)
-            logEntryAdapter.notifyItemRangeChanged(position, listaDeLogs.size)
-            lifecycleScope.launch {
-                db.treinoDao().deleteLogEntry(logEntry)
-            }
+        notaAdapter = TreinoNotaAdapter(listaDeNotas) { nota ->
+            exibirDialogoEditarNota(nota)
         }
-        recyclerView.adapter = logEntryAdapter
+        recyclerView.adapter = notaAdapter
     }
 
     private fun setupListeners() {
         findViewById<FloatingActionButton>(R.id.fab_add_exercicio).setOnClickListener {
-            val novoLog = LogEntry(divisaoId = divisaoId) // MUDOU
-            listaDeLogs.add(novoLog)
-            logEntryAdapter.notifyItemInserted(listaDeLogs.size - 1)
+            exibirDialogoCriarNota()
         }
         findViewById<ImageButton>(R.id.btn_voltar_divisao).setOnClickListener {
             finish()
         }
     }
 
-    private fun carregarLogs() {
+    private fun carregarNotas() {
         lifecycleScope.launch {
-
-            val logsDoBanco = db.treinoDao().getLogEntriesByDivisaoId(divisaoId)
-            listaDeLogs.clear()
-            listaDeLogs.addAll(logsDoBanco)
-
-            if (listaDeLogs.isEmpty()) {
-                listaDeLogs.add(LogEntry(divisaoId = divisaoId))
-            }
-
+            val notasDoBanco = db.treinoDao().getNotasByDivisaoId(divisaoId)
             runOnUiThread {
-                logEntryAdapter.notifyDataSetChanged()
+                notaAdapter.submitList(notasDoBanco)
             }
         }
     }
 
-    private fun salvarLogs() {
-        lifecycleScope.launch {
-            val logsParaSalvar = listaDeLogs.filter { it.campo1.isNotBlank() }
-            db.treinoDao().upsertLogEntries(logsParaSalvar)
-        }
+    private fun exibirDialogoCriarNota() {
+        val editText = EditText(this).apply { hint = "Título (ex: KM corridos, Anotações...)" }
+        AlertDialog.Builder(this)
+            .setTitle("Nova Anotação de Treino")
+            .setView(editText)
+            .setPositiveButton("Criar") { _, _ ->
+                val titulo = editText.text.toString().trim()
+                if (titulo.isNotEmpty()) {
+                    lifecycleScope.launch {
+                        db.treinoDao().insertTreinoNota(TreinoNota(divisaoId = divisaoId, titulo = titulo))
+                        carregarNotas()
+                    }
+                }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun exibirDialogoEditarNota(nota: TreinoNota) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_editar_nota_treino, null)
+        val tituloView = dialogView.findViewById<TextView>(R.id.titulo_dialogo_nota)
+        val conteudoInput = dialogView.findViewById<EditText>(R.id.input_conteudo_nota)
+
+        tituloView.text = nota.titulo
+        conteudoInput.setText(nota.conteudo)
+
+        AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setPositiveButton("Salvar") { _, _ ->
+                nota.conteudo = conteudoInput.text.toString().trim()
+                lifecycleScope.launch {
+                    db.treinoDao().updateTreinoNota(nota)
+                    carregarNotas()
+                }
+            }
+            .setNegativeButton("Cancelar", null)
+            .setNeutralButton("Apagar") { _, _ ->
+                lifecycleScope.launch {
+                    db.treinoDao().deleteTreinoNota(nota)
+                    carregarNotas()
+                }
+            }
+            .show()
     }
 }

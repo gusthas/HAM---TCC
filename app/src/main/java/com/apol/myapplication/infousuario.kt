@@ -8,6 +8,7 @@ import androidx.room.Room
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import android.content.Intent
+import com.apol.myapplication.data.model.User
 
 class infousuario : AppCompatActivity() {
 
