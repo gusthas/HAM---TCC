@@ -1,8 +1,8 @@
-// Substitua o conteúdo COMPLETO do seu arquivo TreinoDetalheActivity.kt por este:
 package com.apol.myapplication
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -13,74 +13,37 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import com.apol.myapplication.DivisaoDetalheActivity
 import com.apol.myapplication.data.model.DivisaoTreino
 import com.apol.myapplication.data.model.TipoDivisao
-import com.apol.myapplication.data.model.TipoTreino
 import com.apol.myapplication.data.model.TreinoEntity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 
 class TreinoDetalheActivity : AppCompatActivity() {
 
-    // --- PROPRIEDADES ---
     private lateinit var db: AppDatabase
     private lateinit var divisaoAdapter: DivisaoAdapter
-    private lateinit var fabAddDivisao: FloatingActionButton
-    private lateinit var btnVoltar: ImageButton
-    private lateinit var nomeTreinoTextView: TextView
-    private lateinit var recyclerViewDivisoes: RecyclerView
-    private lateinit var btnApagarDivisoes: ImageButton
-
     private val listaDivisoes = mutableListOf<DivisaoTreino>()
     private var treinoId: Long = -1L
     private var treinoAtual: TreinoEntity? = null
     private var modoExclusaoAtivo = false
 
-    // --- CICLO DE VIDA ---
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_treino_detalhe)
 
-        treinoId = intent.getLongExtra("TREINO_ID", -1L)
-        val treinoNome = intent.getStringExtra("TREINO_NOME") ?: "Detalhes"
-        if (treinoId == -1L) {
-            Toast.makeText(this, "Erro: ID do treino inválido.", Toast.LENGTH_SHORT).show()
-            finish()
-            return
-        }
-
         db = AppDatabase.getDatabase(this)
-        nomeTreinoTextView = findViewById(R.id.nome_treino_detalhe)
-        recyclerViewDivisoes = findViewById(R.id.recyclerViewDivisoes)
-        fabAddDivisao = findViewById(R.id.fab_add_divisao)
-        btnVoltar = findViewById(R.id.btn_voltar_detalhe)
-        btnApagarDivisoes = findViewById(R.id.btn_apagar_divisoes)
-
-        nomeTreinoTextView.text = treinoNome
+        treinoId = intent.getLongExtra("TREINO_ID", -1L)
+        findViewById<TextView>(R.id.nome_treino_detalhe).text = intent.getStringExtra("TREINO_NOME") ?: "Detalhes"
 
         setupRecyclerView()
         setupListeners()
+    }
+
+    override fun onResume() {
+        super.onResume()
         carregarDadosIniciais()
-    }
-
-    override fun onBackPressed() {
-        if (modoExclusaoAtivo) {
-            desativarModoExclusao()
-        } else {
-            super.onBackPressed()
-        }
-    }
-
-    // --- CONFIGURAÇÕES (SETUP) ---
-    private fun setupListeners() {
-        btnVoltar.setOnClickListener { finish() }
-        fabAddDivisao.setOnClickListener { adicionarNovaDivisaoLetra() }
-        btnApagarDivisoes.setOnClickListener {
-            val selecionados = divisaoAdapter.getSelecionados()
-            if (selecionados.isNotEmpty()) {
-                confirmarExclusao(selecionados)
-            }
-        }
     }
 
     private fun setupRecyclerView() {
@@ -90,7 +53,7 @@ class TreinoDetalheActivity : AppCompatActivity() {
                 if (modoExclusaoAtivo) {
                     toggleSelecao(divisao)
                 } else {
-                    // LÓGICA CORRETA: Sempre abre a tela de anotações (DivisaoDetalheActivity)
+                    // LÓGICA DE NAVEGAÇÃO CORRETA E FINAL
                     val intent = Intent(this, DivisaoDetalheActivity::class.java).apply {
                         putExtra("TREINO_ID", treinoId)
                         putExtra("DIVISAO_ID", divisao.id)
@@ -99,13 +62,41 @@ class TreinoDetalheActivity : AppCompatActivity() {
                     startActivity(intent)
                 }
             },
-            onItemLongClick = { divisao -> if (!modoExclusaoAtivo) ativarModoExclusao(divisao) },
-            onEditClick = { divisao -> if (!modoExclusaoAtivo) exibirDialogoRenomearDivisao(divisao) }
+            onItemLongClick = { divisao ->
+                if (!modoExclusaoAtivo && treinoAtual?.tipoDivisao == TipoDivisao.LETRAS) {
+                    ativarModoExclusao(divisao)
+                }
+            },
+            onEditClick = { divisao ->
+                if (!modoExclusaoAtivo) {
+                    exibirDialogoRenomearDivisao(divisao)
+                }
+            }
         )
         recyclerViewDivisoes.adapter = divisaoAdapter
     }
 
-    // --- LÓGICA DE DADOS ---
+    // As outras funções (setupListeners, carregarDadosIniciais, confirmarExclusao, etc.)
+    // que gerenciam a lista de divisões estão corretas.
+    override fun onBackPressed() {
+        if (modoExclusaoAtivo) {
+            desativarModoExclusao()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    private fun setupListeners() {
+        findViewById<ImageButton>(R.id.btn_voltar_detalhe).setOnClickListener { finish() }
+        findViewById<FloatingActionButton>(R.id.fab_add_divisao).setOnClickListener { adicionarNovaDivisaoLetra() }
+        findViewById<ImageButton>(R.id.btn_apagar_divisoes).setOnClickListener {
+            val selecionados = divisaoAdapter.getSelecionados()
+            if (selecionados.isNotEmpty()) {
+                confirmarExclusao(selecionados)
+            }
+        }
+    }
+
     private fun carregarDadosIniciais() {
         lifecycleScope.launch {
             treinoAtual = db.treinoDao().getTreinoById(treinoId)
@@ -114,7 +105,7 @@ class TreinoDetalheActivity : AppCompatActivity() {
                     if (treino.tipoDivisao == TipoDivisao.NAO_DEFINIDO) {
                         exibirDialogoEscolhaDeDivisao(treino)
                     } else {
-                        fabAddDivisao.visibility = if(treino.tipoDivisao == TipoDivisao.LETRAS) View.VISIBLE else View.GONE
+                        findViewById<FloatingActionButton>(R.id.fab_add_divisao).visibility = if(treino.tipoDivisao == TipoDivisao.LETRAS) View.VISIBLE else View.GONE
                         carregarDivisoesDoBanco()
                     }
                 }
@@ -142,12 +133,11 @@ class TreinoDetalheActivity : AppCompatActivity() {
         }
     }
 
-    // --- MODO DE EXCLUSÃO ---
     private fun ativarModoExclusao(primeiraDivisao: DivisaoTreino) {
         modoExclusaoAtivo = true
         divisaoAdapter.modoExclusaoAtivo = true
-        fabAddDivisao.visibility = View.GONE
-        btnApagarDivisoes.visibility = View.VISIBLE
+        findViewById<FloatingActionButton>(R.id.fab_add_divisao).visibility = View.GONE
+        findViewById<ImageButton>(R.id.btn_apagar_divisoes).visibility = View.VISIBLE
         toggleSelecao(primeiraDivisao)
     }
 
@@ -155,9 +145,9 @@ class TreinoDetalheActivity : AppCompatActivity() {
         modoExclusaoAtivo = false
         divisaoAdapter.limparSelecao()
         if (treinoAtual?.tipoDivisao == TipoDivisao.LETRAS) {
-            fabAddDivisao.visibility = View.VISIBLE
+            findViewById<FloatingActionButton>(R.id.fab_add_divisao).visibility = View.VISIBLE
         }
-        btnApagarDivisoes.visibility = View.GONE
+        findViewById<ImageButton>(R.id.btn_apagar_divisoes).visibility = View.GONE
     }
 
     private fun toggleSelecao(divisao: DivisaoTreino) {
@@ -183,9 +173,8 @@ class TreinoDetalheActivity : AppCompatActivity() {
             .show()
     }
 
-    // --- DIÁLOGOS ---
     private fun exibirDialogoEscolhaDeDivisao(treino: TreinoEntity) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_escolher_divisao, null)
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_escolher_divisao, null)
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
         dialog.setCancelable(true)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)

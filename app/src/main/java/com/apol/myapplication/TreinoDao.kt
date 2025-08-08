@@ -40,4 +40,6 @@ interface TreinoDao {
     suspend fun deleteTreinoNota(nota: TreinoNota)
     @Query("SELECT * FROM treino_notas WHERE divisaoId = :divisaoId")
     suspend fun getNotasByDivisaoId(divisaoId: Long): List<TreinoNota>
+    @Delete
+    suspend fun deleteTreinoNotas(notas: List<TreinoNota>)
 }

@@ -1,8 +1,9 @@
-
+// Garanta que o seu arquivo DivisaoDetalheActivity.kt está assim:
 package com.apol.myapplication
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
@@ -11,6 +12,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import com.apol.myapplication.AppDatabase
+import com.apol.myapplication.R
 import com.apol.myapplication.data.model.TreinoNota
 import com.apol.myapplication.data.model.TreinoNotaAdapter
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -23,38 +26,66 @@ class DivisaoDetalheActivity : AppCompatActivity() {
     private val listaDeNotas = mutableListOf<TreinoNota>()
     private var divisaoId: Long = -1L
 
+    private var modoExclusaoAtivo = false
+    private lateinit var btnApagarNotas: ImageButton
+    private lateinit var fabAddNota: FloatingActionButton
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_divisao_detalhe)
 
         divisaoId = intent.getLongExtra("DIVISAO_ID", -1L)
-        if (divisaoId == -1L) {
-            Toast.makeText(this, "Erro: ID da divisão não encontrado.", Toast.LENGTH_SHORT).show()
-            finish(); return
-        }
+        if (divisaoId == -1L) { finish(); return }
 
         db = AppDatabase.getDatabase(this)
         findViewById<TextView>(R.id.nome_divisao_detalhe).text = intent.getStringExtra("DIVISAO_NOME") ?: "Anotações"
+        btnApagarNotas = findViewById(R.id.btn_apagar_notas)
+        fabAddNota = findViewById(R.id.fab_add_exercicio)
 
         setupRecyclerView()
         setupListeners()
         carregarNotas()
     }
 
+    override fun onBackPressed() {
+        if (modoExclusaoAtivo) {
+            desativarModoExclusao()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
     private fun setupRecyclerView() {
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewExercicios)
-        notaAdapter = TreinoNotaAdapter(listaDeNotas) { nota ->
-            exibirDialogoEditarNota(nota)
-        }
+        notaAdapter = TreinoNotaAdapter(listaDeNotas,
+            onItemClick = { nota ->
+                if (modoExclusaoAtivo) {
+                    toggleSelecao(nota)
+                } else {
+                    exibirDialogoEditarNota(nota)
+                }
+            },
+            onItemLongClick = { nota ->
+                if (!modoExclusaoAtivo) {
+                    ativarModoExclusao(nota)
+                }
+            }
+        )
         recyclerView.adapter = notaAdapter
     }
 
     private fun setupListeners() {
-        findViewById<FloatingActionButton>(R.id.fab_add_exercicio).setOnClickListener {
+        fabAddNota.setOnClickListener {
             exibirDialogoCriarNota()
         }
         findViewById<ImageButton>(R.id.btn_voltar_divisao).setOnClickListener {
             finish()
+        }
+        btnApagarNotas.setOnClickListener {
+            val selecionados = notaAdapter.getSelecionados()
+            if (selecionados.isNotEmpty()) {
+                confirmarExclusao(selecionados)
+            }
         }
     }
 
@@ -65,6 +96,44 @@ class DivisaoDetalheActivity : AppCompatActivity() {
                 notaAdapter.submitList(notasDoBanco)
             }
         }
+    }
+
+    private fun ativarModoExclusao(primeiraNota: TreinoNota) {
+        modoExclusaoAtivo = true
+        notaAdapter.modoExclusaoAtivo = true
+        fabAddNota.visibility = View.GONE
+        btnApagarNotas.visibility = View.VISIBLE
+        toggleSelecao(primeiraNota)
+    }
+
+    private fun desativarModoExclusao() {
+        modoExclusaoAtivo = false
+        notaAdapter.limparSelecao()
+        fabAddNota.visibility = View.VISIBLE
+        btnApagarNotas.visibility = View.GONE
+    }
+
+    private fun toggleSelecao(nota: TreinoNota) {
+        nota.isSelected = !nota.isSelected
+        notaAdapter.notifyDataSetChanged()
+        if (modoExclusaoAtivo && notaAdapter.getSelecionados().isEmpty()) {
+            desativarModoExclusao()
+        }
+    }
+
+    private fun confirmarExclusao(notasParaApagar: List<TreinoNota>) {
+        AlertDialog.Builder(this)
+            .setTitle("Excluir Anotações")
+            .setMessage("Tem certeza que deseja apagar ${notasParaApagar.size} anotação(ões)?")
+            .setPositiveButton("Excluir") { _, _ ->
+                lifecycleScope.launch {
+                    db.treinoDao().deleteTreinoNotas(notasParaApagar)
+                    carregarNotas()
+                }
+                desativarModoExclusao()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private fun exibirDialogoCriarNota() {
