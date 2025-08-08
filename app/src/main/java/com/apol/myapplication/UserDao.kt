@@ -22,5 +22,8 @@ interface UserDao {
     suspend fun deleteUserById(userId: String)
     @Update
     suspend fun updateUser(user: User)
+
+    @Query("SELECT * FROM users WHERE email = :email LIMIT 1") // <-- ADICIONE ESTA
+    suspend fun getUserByEmail(email: String): User?
 }
 

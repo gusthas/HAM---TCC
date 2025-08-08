@@ -42,7 +42,7 @@ class saudemental : AppCompatActivity() {
                     checkBoxFumar, checkBoxBeber, checkBoxSonoRuim, checkBoxProcrastinacao, checkBoxUsoExcessivoCelular,
                     checkBoxAnsiedade, checkBoxDepressao, checkBoxEstresse, checkBoxFaltaDeMotivacao
                 )) {
-                val intent = Intent(this, sujestao::class.java)
+                val intent = Intent(this, pergunta01::class.java)
                 startActivity(intent)
             } else {
                 // Exibe uma mensagem se nenhuma checkbox foi selecionada

@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /> <!-- Permissão para acesso ao armazenamento no Android 10 e superior (Scoped Storage) -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /> 
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
     <application
@@ -92,7 +92,7 @@
             android:name=".bottom_nav_menu"
             android:exported="false" />
         <activity
-            android:name=".MainActivity"
+            android:name=".Bemvindouser"
             android:exported="false" />
         <activity
             android:name=".bemvindo"
@@ -105,18 +105,18 @@
             android:exported="false" />
         <activity
             android:name=".livro"
-            android:exported="false" /> <!-- Atividade de Pergunta -->
+            android:exported="false" />
         <activity
             android:name=".pergunta01"
-            android:exported="false" /> <!-- Atividade de infousuario -->
+            android:exported="false" />
         <activity
             android:name=".infousuario"
-            android:exported="false" /> <!-- Atividade de Registro -->
+            android:exported="false" />
         <activity
             android:name=".RegistroActivity"
-            android:exported="false" /> <!-- MainActivity, que é a primeira atividade ao abrir o app -->
+            android:exported="false" />
         <activity
-            android:name=".Bemvindouser"
+            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -115,7 +115,7 @@ class pergunta01 : AppCompatActivity() {
         val btnAvancar = findViewById<Button>(R.id.buttonavancaratividades)
         btnAvancar.setOnClickListener {
             if (validarCampos()) {
-                val intent = Intent(this, livro::class.java)
+                val intent = Intent(this, sujestao::class.java)
                 startActivity(intent)
             } else {
                 Toast.makeText(this, "Por favor, preencha todos os campos obrigatórios.", Toast.LENGTH_SHORT).show()

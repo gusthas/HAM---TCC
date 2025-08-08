@@ -1,3 +1,4 @@
+
 package com.apol.myapplication
 
 import android.content.Intent
@@ -8,104 +9,68 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.room.Room
-
-import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.tasks.await
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var db: AppDatabase
     private lateinit var userDao: UserDao
-    private lateinit var auth: FirebaseAuth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Inicializa o Firebase Auth
-        auth = Firebase.auth
+        db = AppDatabase.getDatabase(this)
+        userDao = db.userDao()
 
         val etEmail = findViewById<EditText>(R.id.editTextusuario)
         val etSenha = findViewById<EditText>(R.id.editTextsenha)
         val btnLogin = findViewById<Button>(R.id.buttonavancarinfousuario)
         val tvCadastrese = findViewById<TextView>(R.id.textView8)
 
-        // Configura o banco Room com migração
-        db = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java,
-            "app_database" // Nome do banco de dados
-        )
-            .addMigrations(AppDatabase.MIGRATION_1_2)  // Adicionando a migração para a versão 2
-            .build()
-
-        userDao = db.userDao()
-
         btnLogin.setOnClickListener {
-            val email = etEmail.text.toString()
-            val senha = etSenha.text.toString()
+            val email = etEmail.text.toString().trim()
+            val senha = etSenha.text.toString().trim()
 
-            if (email.isNotEmpty() && senha.isNotEmpty()) {
-                lifecycleScope.launch {
-                    try {
-                        val authResult = auth.signInWithEmailAndPassword(email, senha).await()
+            if (email.isEmpty() || senha.isEmpty()) {
+                Toast.makeText(this, "Preencha todos os campos", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
 
-                        if (authResult.user != null) {
-                            val user = auth.currentUser
-                            user?.let {
-                                val userId = it.uid
+            lifecycleScope.launch {
+                // 1. Busca o usuário pelo e-mail no banco local
+                val user = userDao.getUserByEmail(email)
 
-                                // Verifica se já existe um usuário completo no banco
-                                val existingUser = userDao.getUserById(userId)
+                // 2. Verifica se o usuário foi encontrado e se a senha confere
+                if (user != null && user.password == senha) {
+                    // 3. Login bem-sucedido! Salva a sessão.
+                    // Usaremos SharedPreferences para "lembrar" do e-mail do usuário logado
+                    val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+                    prefs.edit().putString("LOGGED_IN_USER_EMAIL", email).apply()
 
-                                runOnUiThread {
-                                    Toast.makeText(this@MainActivity, "Login bem-sucedido", Toast.LENGTH_SHORT).show()
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Login bem-sucedido", Toast.LENGTH_SHORT).show()
 
-                                    val proximaTela = if (
-                                        existingUser != null &&
-                                        existingUser.nome.isNotEmpty() &&
-                                        existingUser.idade > 0 &&
-                                        existingUser.peso > 0 &&
-                                        existingUser.altura > 0 &&
-                                        existingUser.genero.isNotEmpty()
-                                    ) {
-                                        // Já preencheu os dados → vai direto para Bem-vindo
-                                        Intent(this@MainActivity, bemvindo::class.java)
-                                    } else {
-                                        // Ainda não preencheu → vai para Info Usuário
-                                        Intent(this@MainActivity, infousuario::class.java)
-                                    }
-
-                                    startActivity(proximaTela)
-                                    finish()
-                                }
-                            }
+                        // Decide para qual tela ir
+                        val proximaTela = if (user.nome.isNotEmpty() && user.idade > 0) {
+                            Intent(this@MainActivity, Bemvindouser::class.java)
                         } else {
-                            runOnUiThread {
-                                Toast.makeText(this@MainActivity, "Email ou senha incorretos", Toast.LENGTH_SHORT).show()
-                            }
+                            Intent(this@MainActivity, infousuario::class.java)
                         }
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            Toast.makeText(this@MainActivity, "Erro ao tentar fazer login: ${e.message}", Toast.LENGTH_SHORT).show()
-                        }
+                        startActivity(proximaTela)
+                        finish()
+                    }
+                } else {
+                    // 4. Se não encontrou ou a senha está errada
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "E-mail ou senha incorretos", Toast.LENGTH_SHORT).show()
                     }
                 }
-            } else {
-                Toast.makeText(this, "Preencha todos os campos", Toast.LENGTH_SHORT).show()
             }
         }
 
-
-        // Navega para a tela de cadastro
         tvCadastrese.setOnClickListener {
-            val intent = Intent(this, RegistroActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, RegistroActivity::class.java))
         }
     }
 }
-

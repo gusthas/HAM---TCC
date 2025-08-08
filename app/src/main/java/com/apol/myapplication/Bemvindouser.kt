@@ -1,3 +1,4 @@
+// Substitua o conteúdo COMPLETO do seu arquivo Bemvindouser.kt
 package com.apol.myapplication
 
 import android.content.Context
@@ -7,12 +8,12 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.View
 import android.widget.*
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -20,10 +21,10 @@ import java.util.*
 class Bemvindouser : AppCompatActivity() {
 
     private lateinit var viewModel: NotesViewModel
+    private lateinit var db: AppDatabase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_bemvindouser)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -33,7 +34,10 @@ class Bemvindouser : AppCompatActivity() {
         }
 
         viewModel = ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory.getInstance(application)).get(NotesViewModel::class.java)
+        db = AppDatabase.getDatabase(this) // Pega a instância do banco
 
+        // --- CHAMADA DAS FUNÇÕES DE CONFIGURAÇÃO ---
+        carregarDadosDoUsuarioEAtualizarTela() // Personaliza o "Bem-vindo"
         atualizarDataComSimbolo()
         configurarNavBar()
         configurarBotaoNovoHabito()
@@ -41,6 +45,37 @@ class Bemvindouser : AppCompatActivity() {
         configurarBotaoNovoBloco()
         carregarTop3Habitos()
         carregarTop3Blocos()
+    }
+
+    private fun carregarDadosDoUsuarioEAtualizarTela() {
+        val welcomeTextView = findViewById<TextView>(R.id.welcome_text)
+
+        // Pega o e-mail do usuário logado que salvamos no SharedPreferences
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val userEmail = prefs.getString("LOGGED_IN_USER_EMAIL", null)
+
+        if (userEmail == null) {
+            welcomeTextView.text = "Bem-vindo(a)!"
+            return
+        }
+
+        lifecycleScope.launch {
+            // Usa o e-mail para buscar o usuário completo no banco de dados
+            val user = db.userDao().getUserByEmail(userEmail)
+
+            runOnUiThread {
+                if (user != null && user.nome.isNotEmpty()) {
+                    val saudacao = if (user.genero.equals("Feminino", ignoreCase = true)) {
+                        "Bem-vinda"
+                    } else {
+                        "Bem-vindo"
+                    }
+                    welcomeTextView.text = "$saudacao, ${user.nome}!"
+                } else {
+                    welcomeTextView.text = "Bem-vindo(a)!"
+                }
+            }
+        }
     }
 
     private fun configurarNavBar() {
@@ -55,9 +90,11 @@ class Bemvindouser : AppCompatActivity() {
         navBar.findViewById<LinearLayout>(R.id.botao_treinos).setOnClickListener {
             startActivity(Intent(this, treinos::class.java))
         }
-        navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
-            startActivity(Intent(this, CronometroActivity::class.java))
-        }
+        // NOTE: O botão cronometro foi removido do seu XML da tela de bem-vindo,
+        // mas se você o tiver em outro layout, o código pode ficar.
+        // navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
+        //     startActivity(Intent(this, CronometroActivity::class.java))
+        // }
         navBar.findViewById<LinearLayout>(R.id.botao_configuracoes).setOnClickListener {
             startActivity(Intent(this, configuracoes::class.java))
         }
@@ -95,7 +132,7 @@ class Bemvindouser : AppCompatActivity() {
         btnNovoBloco.setOnClickListener {
             val intent = Intent(this, anotacoes::class.java)
             intent.putExtra("modo_blocos_ativo", true)
-            intent.putExtra("abrir_dialogo_novo_bloco", true)
+            intent.putExtra("abrir_selecao_blocos", true) // Corrigido de "abrir_dialogo_novo_bloco" para o que usamos na tela de anotações
             startActivity(intent)
         }
     }
@@ -125,7 +162,7 @@ class Bemvindouser : AppCompatActivity() {
                         view.setOnClickListener {
                             val intent = Intent(this@Bemvindouser, anotacoes::class.java)
                             intent.putExtra("modo_blocos_ativo", true)
-                            intent.putExtra("abrir_bloco_id", blocoData.id)
+                            // Adicionar lógica para abrir o bloco específico se necessário
                             startActivity(intent)
                         }
                         view.visibility = View.VISIBLE
@@ -156,7 +193,7 @@ class Bemvindouser : AppCompatActivity() {
             val imageView = bloco.getChildAt(0) as ImageView
             val textView = bloco.getChildAt(1) as TextView
 
-            if (habito != null) {
+            if (habito != null && habito.isNotEmpty()) {
                 val emoji = extrairEmoji(habito)
                 val nome = removerEmoji(habito)
                 if (emoji.isNotEmpty()) {
@@ -170,9 +207,7 @@ class Bemvindouser : AppCompatActivity() {
                     incrementarHabito(habito)
                 }
             } else {
-                imageView.visibility = View.GONE
-                textView.text = "Sem hábito"
-                bloco.setOnClickListener(null)
+                bloco.visibility = View.GONE
             }
         }
     }

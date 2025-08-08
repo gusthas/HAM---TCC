@@ -60,7 +60,7 @@ class sujestao : AppCompatActivity() {
             if (validarRespostas(
                     checkBoxRespiracao, checkBoxMeditacao, checkBoxPodcasts, checkBoxExerciciosMentais, checkBoxNenhumaAtividade
                 )) {
-                val intent = Intent(this, bemvindo::class.java)
+                val intent = Intent(this, Bemvindouser::class.java)
                 startActivity(intent)
             } else {
                 // Exibe mensagem caso não tenha nenhuma checkbox selecionada
