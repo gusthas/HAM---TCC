@@ -27,6 +27,11 @@ class MainActivity : AppCompatActivity() {
         val etSenha = findViewById<EditText>(R.id.editTextsenha)
         val btnLogin = findViewById<Button>(R.id.buttonavancarinfousuario)
         val tvCadastrese = findViewById<TextView>(R.id.textView8)
+        val btnAdmin = findViewById<Button>(R.id.btn_admin_users)
+
+        btnAdmin.setOnClickListener {
+            startActivity(Intent(this, AdminUsersActivity::class.java))
+        }
 
         btnLogin.setOnClickListener {
             val email = etEmail.text.toString().trim()
