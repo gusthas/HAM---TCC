@@ -42,7 +42,7 @@ class progresso : AppCompatActivity() {
             // Já está na tela cronometro, não faz nada
         }
 
-        navBar.findViewById<LinearLayout>(R.id.botao_configuracoes).setOnClickListener {
+        navBar.findViewById<LinearLayout>(R.id.botao_sugestoes).setOnClickListener {
             startActivity(Intent(this, configuracoes::class.java))
         }
     }

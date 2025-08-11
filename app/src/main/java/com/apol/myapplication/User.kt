@@ -1,4 +1,3 @@
-
 package com.apol.myapplication.data.model
 
 import androidx.room.Entity
@@ -14,5 +13,8 @@ data class User(
     val idade: Int,
     val peso: Int,
     val altura: Float,
-    val genero: String
+    val genero: String,
+
+    // ▼▼▼ CAMPO ADICIONADO PARA A FOTO DE PERFIL ▼▼▼
+    val profilePicUri: String? = null
 )

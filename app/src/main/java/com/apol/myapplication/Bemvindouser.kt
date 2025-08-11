@@ -1,19 +1,30 @@
-// Substitua o conteúdo COMPLETO do seu arquivo Bemvindouser.kt
 package com.apol.myapplication
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.*
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Canvas
+import android.graphics.ColorFilter
+import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.View
-import android.widget.*
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import com.google.firebase.auth.FirebaseAuth
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.RequestOptions
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -34,12 +45,12 @@ class Bemvindouser : AppCompatActivity() {
         }
 
         viewModel = ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory.getInstance(application)).get(NotesViewModel::class.java)
-        db = AppDatabase.getDatabase(this) // Pega a instância do banco
+        db = AppDatabase.getDatabase(this)
 
-        // --- CHAMADA DAS FUNÇÕES DE CONFIGURAÇÃO ---
-        carregarDadosDoUsuarioEAtualizarTela() // Personaliza o "Bem-vindo"
+        carregarDadosDoUsuarioEAtualizarTela()
         atualizarDataComSimbolo()
         configurarNavBar()
+        configurarBotaoPerfil()
         configurarBotaoNovoHabito()
         configurarBotaoAnotacaoRapida()
         configurarBotaoNovoBloco()
@@ -47,32 +58,46 @@ class Bemvindouser : AppCompatActivity() {
         carregarTop3Blocos()
     }
 
+    private fun configurarBotaoPerfil() {
+        val btnProfile = findViewById<View>(R.id.btn_profile_settings)
+        btnProfile.setOnClickListener {
+            startActivity(Intent(this, configuracoes::class.java))
+        }
+    }
+
     private fun carregarDadosDoUsuarioEAtualizarTela() {
         val welcomeTextView = findViewById<TextView>(R.id.welcome_text)
+        val profileImageView = findViewById<ImageView>(R.id.iv_profile_picture)
 
-        // Pega o e-mail do usuário logado que salvamos no SharedPreferences
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         val userEmail = prefs.getString("LOGGED_IN_USER_EMAIL", null)
 
         if (userEmail == null) {
             welcomeTextView.text = "Bem-vindo(a)!"
+            profileImageView.setImageResource(R.drawable.ic_person_placeholder) // Crie um ícone de placeholder
             return
         }
 
         lifecycleScope.launch {
-            // Usa o e-mail para buscar o usuário completo no banco de dados
             val user = db.userDao().getUserByEmail(userEmail)
-
             runOnUiThread {
                 if (user != null && user.nome.isNotEmpty()) {
-                    val saudacao = if (user.genero.equals("Feminino", ignoreCase = true)) {
-                        "Bem-vinda"
-                    } else {
-                        "Bem-vindo"
-                    }
+                    val saudacao = if (user.genero.equals("Feminino", ignoreCase = true)) "Bem-vinda" else "Bem-vindo"
                     welcomeTextView.text = "$saudacao, ${user.nome}!"
+
+                    if (!user.profilePicUri.isNullOrEmpty()) {
+                        Glide.with(this@Bemvindouser)
+                            .load(user.profilePicUri)
+                            .apply(RequestOptions.circleCropTransform())
+                            .into(profileImageView)
+                    } else {
+                        val initials = user.nome.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
+                        val placeholder = InitialsDrawable(initials, ContextCompat.getColor(this@Bemvindouser, R.color.roxo))
+                        profileImageView.setImageDrawable(placeholder)
+                    }
                 } else {
                     welcomeTextView.text = "Bem-vindo(a)!"
+                    profileImageView.setImageResource(R.drawable.ic_person_placeholder)
                 }
             }
         }
@@ -90,13 +115,11 @@ class Bemvindouser : AppCompatActivity() {
         navBar.findViewById<LinearLayout>(R.id.botao_treinos).setOnClickListener {
             startActivity(Intent(this, treinos::class.java))
         }
-        // NOTE: O botão cronometro foi removido do seu XML da tela de bem-vindo,
-        // mas se você o tiver em outro layout, o código pode ficar.
-        // navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
-        //     startActivity(Intent(this, CronometroActivity::class.java))
-        // }
-        navBar.findViewById<LinearLayout>(R.id.botao_configuracoes).setOnClickListener {
-            startActivity(Intent(this, configuracoes::class.java))
+        navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
+            startActivity(Intent(this, CronometroActivity::class.java))
+        }
+        navBar.findViewById<LinearLayout>(R.id.botao_sugestoes).setOnClickListener {
+            Toast.makeText(this, "Tela de Sugestões em breve!", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -132,7 +155,7 @@ class Bemvindouser : AppCompatActivity() {
         btnNovoBloco.setOnClickListener {
             val intent = Intent(this, anotacoes::class.java)
             intent.putExtra("modo_blocos_ativo", true)
-            intent.putExtra("abrir_selecao_blocos", true) // Corrigido de "abrir_dialogo_novo_bloco" para o que usamos na tela de anotações
+            intent.putExtra("abrir_dialogo_novo_bloco", true)
             startActivity(intent)
         }
     }
@@ -162,7 +185,7 @@ class Bemvindouser : AppCompatActivity() {
                         view.setOnClickListener {
                             val intent = Intent(this@Bemvindouser, anotacoes::class.java)
                             intent.putExtra("modo_blocos_ativo", true)
-                            // Adicionar lógica para abrir o bloco específico se necessário
+                            intent.putExtra("abrir_bloco_id", blocoData.id)
                             startActivity(intent)
                         }
                         view.visibility = View.VISIBLE
