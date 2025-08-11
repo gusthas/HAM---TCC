@@ -95,7 +95,7 @@
             android:name=".bottom_nav_menu"
             android:exported="false" />
         <activity
-            android:name=".Bemvindouser"
+            android:name=".pergunta01"
             android:exported="false" />
         <activity
             android:name=".bemvindo"
@@ -119,7 +119,7 @@
             android:name=".RegistroActivity"
             android:exported="false" />
         <activity
-            android:name=".pergunta01"
+            android:name=".Bemvindouser"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
