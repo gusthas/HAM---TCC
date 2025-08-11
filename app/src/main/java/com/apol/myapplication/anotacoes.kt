@@ -81,7 +81,7 @@ class anotacoes : AppCompatActivity() {
         navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
             startActivity(Intent(this, CronometroActivity::class.java))
         }
-        navBar.findViewById<LinearLayout>(R.id.botao_configuracoes).setOnClickListener {
+        navBar.findViewById<LinearLayout>(R.id.botao_sugestoes).setOnClickListener {
             startActivity(Intent(this, configuracoes::class.java))
         }
         prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
