@@ -1,9 +1,11 @@
+// Substitua o conteúdo COMPLETO do seu arquivo sujestao.kt
 package com.apol.myapplication
 
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -23,17 +25,34 @@ class sujestao : AppCompatActivity() {
             insets
         }
 
-        // Referências para as checkboxes
+        // --- Referências para as Views ---
+        // Checkboxes (como você já tinha)
         val checkBoxRespiracao = findViewById<CheckBox>(R.id.checkBoxrespiracao)
         val checkBoxMeditacao = findViewById<CheckBox>(R.id.checkBox2meditacao)
         val checkBoxPodcasts = findViewById<CheckBox>(R.id.checkBox3podcasts)
         val checkBoxExerciciosMentais = findViewById<CheckBox>(R.id.checkBox4exerciciomentais)
         val checkBoxNenhumaAtividade = findViewById<CheckBox>(R.id.checkBox5nenhumaatividade)
 
-        // Armazenando as respostas das checkboxes
-        var respostaAtividades: List<String> = listOf()
+        // Cards clicáveis (NOVO)
+        val cardRespiracao = findViewById<LinearLayout>(R.id.card_respiracao)
+        val cardMeditacao = findViewById<LinearLayout>(R.id.card_meditacao)
+        val cardPodcasts = findViewById<LinearLayout>(R.id.card_podcasts)
+        val cardExerciciosMentais = findViewById<LinearLayout>(R.id.card_exercicios_mentais)
+        val cardNenhuma = findViewById<LinearLayout>(R.id.card_nenhuma)
 
-        // Listener para a checkbox "Nenhuma atividade extra"
+        // Botão de avançar
+        val btnAvancar = findViewById<Button>(R.id.buttonavancarsujestao)
+
+        // --- Lógica de Interação ---
+
+        // NOVO: Faz com que clicar no card marque/desmarque o CheckBox correspondente
+        cardRespiracao.setOnClickListener { checkBoxRespiracao.isChecked = !checkBoxRespiracao.isChecked }
+        cardMeditacao.setOnClickListener { checkBoxMeditacao.isChecked = !checkBoxMeditacao.isChecked }
+        cardPodcasts.setOnClickListener { checkBoxPodcasts.isChecked = !checkBoxPodcasts.isChecked }
+        cardExerciciosMentais.setOnClickListener { checkBoxExerciciosMentais.isChecked = !checkBoxExerciciosMentais.isChecked }
+        cardNenhuma.setOnClickListener { checkBoxNenhumaAtividade.isChecked = !checkBoxNenhumaAtividade.isChecked }
+
+        // MANTIDO: Sua lógica inteligente para a opção "Nenhuma"
         checkBoxNenhumaAtividade.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 // Desmarcar e desabilitar as outras checkboxes
@@ -54,31 +73,31 @@ class sujestao : AppCompatActivity() {
             }
         }
 
-        // Referência para o botão "Avançar"
-        val btnAvancar = findViewById<Button>(R.id.buttonavancarsujestao)
+        // MANTIDO: Sua lógica de validação no botão de avançar
         btnAvancar.setOnClickListener {
             if (validarRespostas(
                     checkBoxRespiracao, checkBoxMeditacao, checkBoxPodcasts, checkBoxExerciciosMentais, checkBoxNenhumaAtividade
                 )) {
+
+                // AQUI você pode salvar as respostas do usuário antes de avançar
+
                 val intent = Intent(this, Bemvindouser::class.java)
                 startActivity(intent)
+                finish() // Adicionado para não permitir voltar a esta tela
             } else {
-                // Exibe mensagem caso não tenha nenhuma checkbox selecionada
-                Toast.makeText(this, "Por favor, selecione ao menos uma atividade!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Por favor, selecione ao menos uma opção!", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Função de validação das respostas
+    // MANTIDO: Sua função de validação, está perfeita
     private fun validarRespostas(
         checkBoxRespiracao: CheckBox, checkBoxMeditacao: CheckBox, checkBoxPodcasts: CheckBox,
         checkBoxExerciciosMentais: CheckBox, checkBoxNenhumaAtividade: CheckBox
     ): Boolean {
-        // Se "Nenhuma atividade extra" for marcada, desmarcar e desabilitar as outras checkboxes
         return if (checkBoxNenhumaAtividade.isChecked) {
-            true  // Caso "Nenhuma atividade extra" esteja marcada, já é válido
+            true
         } else {
-            // Validar se pelo menos uma das outras checkboxes foi selecionada
             checkBoxRespiracao.isChecked || checkBoxMeditacao.isChecked || checkBoxPodcasts.isChecked || checkBoxExerciciosMentais.isChecked
         }
     }

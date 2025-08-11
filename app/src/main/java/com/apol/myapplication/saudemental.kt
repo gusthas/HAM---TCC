@@ -1,3 +1,4 @@
+// Substitua o conteúdo COMPLETO do seu arquivo saudemental.kt
 package com.apol.myapplication
 
 import android.content.Intent
@@ -23,49 +24,78 @@ class saudemental : AppCompatActivity() {
             insets
         }
 
-        // Referência para os checkboxes da primeira pergunta
-        val checkBoxFumar = findViewById<CheckBox>(R.id.checkBoxfumar)
-        val checkBoxBeber = findViewById<CheckBox>(R.id.checkBox2beber)
-        val checkBoxSonoRuim = findViewById<CheckBox>(R.id.checkBox3sonoruim)
-        val checkBoxProcrastinacao = findViewById<CheckBox>(R.id.checkBox4procastinacao)
-        val checkBoxUsoExcessivoCelular = findViewById<CheckBox>(R.id.checkBox5usoexcessivodocelular)
+        // --- Referências para as checkboxes ---
+        // Pergunta 1: Hábitos
+        val checkFumar = findViewById<CheckBox>(R.id.checkBoxfumar)
+        val checkBeber = findViewById<CheckBox>(R.id.checkBox2beber)
+        val checkSonoRuim = findViewById<CheckBox>(R.id.checkBox3sonoruim)
+        val checkProcrastinacao = findViewById<CheckBox>(R.id.checkBox4procastinacao)
+        val checkUsoCelular = findViewById<CheckBox>(R.id.checkBox5usoexcessivodocelular)
+        val checkNenhumHabito = findViewById<CheckBox>(R.id.checkBoxNenhumHabito) // NOVO
+        val listaHabitos = listOf(checkFumar, checkBeber, checkSonoRuim, checkProcrastinacao, checkUsoCelular)
 
-        // Referência para os checkboxes da segunda pergunta
-        val checkBoxAnsiedade = findViewById<CheckBox>(R.id.checkBox6ansiedade)
-        val checkBoxDepressao = findViewById<CheckBox>(R.id.checkBox7depressao)
-        val checkBoxEstresse = findViewById<CheckBox>(R.id.checkBox8estresse)
-        val checkBoxFaltaDeMotivacao = findViewById<CheckBox>(R.id.checkBox9faltademotivacao)
+        // Pergunta 2: Emocional
+        val checkAnsiedade = findViewById<CheckBox>(R.id.checkBox6ansiedade)
+        val checkDepressao = findViewById<CheckBox>(R.id.checkBox7depressao)
+        val checkEstresse = findViewById<CheckBox>(R.id.checkBox8estresse)
+        val checkFaltaMotivacao = findViewById<CheckBox>(R.id.checkBox9faltademotivacao)
+        val checkSemProblema = findViewById<CheckBox>(R.id.checkBoxSemProblema) // NOVO
+        val listaEmocional = listOf(checkAnsiedade, checkDepressao, checkEstresse, checkFaltaMotivacao)
 
+        // --- Lógica de Interação ---
+        // Lógica para a opção "Nenhum" da Pergunta 1
+        checkNenhumHabito.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                listaHabitos.forEach { it.isChecked = false; it.isEnabled = false }
+            } else {
+                listaHabitos.forEach { it.isEnabled = true }
+            }
+        }
+        listaHabitos.forEach { checkBox ->
+            checkBox.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) checkNenhumHabito.isChecked = false
+            }
+        }
+
+        // Lógica para a opção "Nenhum" da Pergunta 2
+        checkSemProblema.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                listaEmocional.forEach { it.isChecked = false; it.isEnabled = false }
+            } else {
+                listaEmocional.forEach { it.isEnabled = true }
+            }
+        }
+        listaEmocional.forEach { checkBox ->
+            checkBox.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) checkSemProblema.isChecked = false
+            }
+        }
+
+        // --- Botão Avançar ---
         val btnAvancar = findViewById<Button>(R.id.buttonavancarsaudemental)
         btnAvancar.setOnClickListener {
-            if (validarRespostas(
-                    checkBoxFumar, checkBoxBeber, checkBoxSonoRuim, checkBoxProcrastinacao, checkBoxUsoExcessivoCelular,
-                    checkBoxAnsiedade, checkBoxDepressao, checkBoxEstresse, checkBoxFaltaDeMotivacao
-                )) {
+            if (validarRespostas(listaHabitos, checkNenhumHabito, listaEmocional, checkSemProblema)) {
+                // Aqui você pode salvar as respostas do usuário antes de avançar
+
                 val intent = Intent(this, pergunta01::class.java)
                 startActivity(intent)
+                finish() // Adicionado para fechar a tela de perguntas
             } else {
-                // Exibe uma mensagem se nenhuma checkbox foi selecionada
-                Toast.makeText(this, "Por favor, selecione pelo menos uma opção em cada pergunta!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Por favor, selecione uma opção para cada pergunta!", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Função de validação para garantir que pelo menos uma checkbox foi selecionada em cada pergunta
+    // Função de validação atualizada para a nova lógica
     private fun validarRespostas(
-        checkBoxFumar: CheckBox, checkBoxBeber: CheckBox, checkBoxSonoRuim: CheckBox, checkBoxProcrastinacao: CheckBox,
-        checkBoxUsoExcessivoCelular: CheckBox, checkBoxAnsiedade: CheckBox, checkBoxDepressao: CheckBox,
-        checkBoxEstresse: CheckBox, checkBoxFaltaDeMotivacao: CheckBox
+        habitos: List<CheckBox>, nenhumHabito: CheckBox,
+        emocional: List<CheckBox>, semProblema: CheckBox
     ): Boolean {
-        // Valida a primeira pergunta
-        val pergunta1Respondida = checkBoxFumar.isChecked || checkBoxBeber.isChecked || checkBoxSonoRuim.isChecked ||
-                checkBoxProcrastinacao.isChecked || checkBoxUsoExcessivoCelular.isChecked
+        // Valida se pelo menos uma opção da pergunta 1 foi marcada
+        val pergunta1Respondida = habitos.any { it.isChecked } || nenhumHabito.isChecked
+        // Valida se pelo menos uma opção da pergunta 2 foi marcada
+        val pergunta2Respondida = emocional.any { it.isChecked } || semProblema.isChecked
 
-        // Valida a segunda pergunta
-        val pergunta2Respondida = checkBoxAnsiedade.isChecked || checkBoxDepressao.isChecked ||
-                checkBoxEstresse.isChecked || checkBoxFaltaDeMotivacao.isChecked
-
-        // Retorna true se ambas as perguntas tiverem ao menos uma opção selecionada
         return pergunta1Respondida && pergunta2Respondida
     }
 }
