@@ -3,9 +3,11 @@ package com.apol.myapplication
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
+import android.graphics.*
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
@@ -15,11 +17,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.ToggleButton
-import androidx.activity.addCallback
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -32,6 +33,8 @@ class habitos : AppCompatActivity() {
     private lateinit var habitsAdapter: HabitsAdapter
     private lateinit var fabAddHabit: FloatingActionButton
     private lateinit var btnDeleteSelected: ImageButton
+    private lateinit var itemTouchHelper: ItemTouchHelper
+    private lateinit var clickOutsideView: View
 
     private val PREFS_NAME = "habitos_prefs"
     private val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
@@ -45,11 +48,9 @@ class habitos : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_habitos)
 
-        val mainLayout = findViewById<View>(R.id.main)
-        ViewCompat.setOnApplyWindowInsetsListener(mainLayout) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
@@ -58,58 +59,153 @@ class habitos : AppCompatActivity() {
         recyclerViewHabits = findViewById(R.id.recyclerViewHabits)
         fabAddHabit = findViewById(R.id.fab_add_habit)
         btnDeleteSelected = findViewById(R.id.btn_delete_selected)
+        clickOutsideView = findViewById(R.id.click_outside_view)
         configurarNavigationBar()
 
+        setupRecyclerView()
+        setupListeners()
+
+        val deveAbrirDialogo = intent.getBooleanExtra("abrir_dialogo_novo_habito", false)
+        if (deveAbrirDialogo) {
+            mostrarDialogoNovoHabito()
+            intent.removeExtra("abrir_dialogo_novo_habito")
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        carregarHabitosSalvos()
+        carregarSequencias()
+        atualizarAdapter()
+    }
+
+    override fun onBackPressed() {
+        if (isDeleteMode) {
+            desativarModoExclusao()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    private fun setupListeners() {
+        fabAddHabit.setOnClickListener {
+            if (!isDeleteMode) mostrarDialogoNovoHabito()
+        }
+        btnDeleteSelected.setOnClickListener {
+            val selecionados = habitsAdapter.getSelecionados()
+            if (selecionados.isNotEmpty()) confirmarExclusao(selecionados)
+        }
+        clickOutsideView.setOnClickListener {
+            if (isDeleteMode) desativarModoExclusao()
+        }
+    }
+
+    private fun setupRecyclerView() {
         habitsAdapter = HabitsAdapter(
             onItemClick = { habit ->
-                if (!isDeleteMode) {
+                if (isDeleteMode) {
+                    toggleSelecao(habit)
+                } else {
                     mostrarOpcoesHabito(habit)
                 }
             },
-            onItemLongClick = { habitos_modoExclusao(true) },
             onMarkDone = { habit -> atualizarContagemDoHabito(habit.name, 1) },
             onUndoDone = { habit -> atualizarContagemDoHabito(habit.name, -1) }
         )
         habitsAdapter.onExclusaoModoVazio = {
-            habitos_modoExclusao(false)
+            desativarModoExclusao()
         }
 
         recyclerViewHabits.adapter = habitsAdapter
         recyclerViewHabits.layoutManager = LinearLayoutManager(this)
-        btnDeleteSelected.setOnClickListener { onBotaoApagarClick() }
+
+        val callback = object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val fromPosition = viewHolder.adapterPosition
+                val toPosition = target.adapterPosition
+                Collections.swap(habitNames, fromPosition, toPosition)
+                habitsAdapter.notifyItemMoved(fromPosition, toPosition)
+                return true
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+
+            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+                super.onSelectedChanged(viewHolder, actionState)
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                    viewHolder?.let {
+                        if (!isDeleteMode) {
+                            ativarModoExclusao(habitsAdapter.getHabitAt(it.adapterPosition))
+                        }
+                    }
+                }
+            }
+
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                salvarHabitos()
+                atualizarAdapter()
+            }
+
+            override fun isLongPressDragEnabled(): Boolean {
+                return true
+            }
+        }
+        itemTouchHelper = ItemTouchHelper(callback)
+        itemTouchHelper.attachToRecyclerView(recyclerViewHabits)
+    }
+
+    private fun ativarModoExclusao(primeiroItem: Habit?) {
+        isDeleteMode = true
+        habitsAdapter.modoExclusaoAtivo = true
+        fabAddHabit.visibility = View.GONE
+        btnDeleteSelected.visibility = View.VISIBLE
+        clickOutsideView.visibility = View.VISIBLE
+
+        primeiroItem?.let {
+            it.isSelected = true
+        }
+        habitsAdapter.notifyDataSetChanged()
+    }
+
+    private fun desativarModoExclusao() {
+        isDeleteMode = false
+        habitsAdapter.modoExclusaoAtivo = false
+        fabAddHabit.visibility = View.VISIBLE
         btnDeleteSelected.visibility = View.GONE
+        clickOutsideView.visibility = View.GONE
+        habitsAdapter.limparSelecao()
+        habitsAdapter.notifyDataSetChanged()
+    }
 
-        carregarHabitosSalvos()
-        carregarSequencias()
-        atualizarAdapter()
+    private fun toggleSelecao(habit: Habit) {
+        habit.isSelected = !habit.isSelected
+        habitsAdapter.notifyDataSetChanged()
+        if (isDeleteMode && habitsAdapter.getSelecionados().isEmpty()) {
+            desativarModoExclusao()
+        }
+    }
 
-        fabAddHabit.setOnClickListener { mostrarDialogoNovoHabito() }
-
-        onBackPressedDispatcher.addCallback(this) {
-            if (isDeleteMode) {
-                habitos_modoExclusao(false)
-            } else {
-                isEnabled = false
-                onBackPressedDispatcher.onBackPressed()
+    private fun confirmarExclusao(habitosParaApagar: List<Habit>) {
+        AlertDialog.Builder(this)
+            .setTitle("Excluir Hábitos")
+            .setMessage("Tem certeza que deseja apagar ${habitosParaApagar.size} hábito(s)?")
+            .setPositiveButton("Excluir") { _, _ ->
+                onBotaoApagarClick()
             }
-        }
-        mainLayout.setOnClickListener {
-            if (isDeleteMode) {
-                habitos_modoExclusao(false)
-            }
-        }
-
-        // Verifica se a tela foi aberta com a intenção de criar um novo hábito
-        val deveAbrirDialogo = intent.getBooleanExtra("abrir_dialogo_novo_habito", false)
-        if (deveAbrirDialogo) {
-            mostrarDialogoNovoHabito()
-        }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private fun mostrarOpcoesHabito(habit: Habit) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_opcoes_habito, null)
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
-
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         val title = dialogView.findViewById<TextView>(R.id.dialog_options_title)
@@ -263,7 +359,6 @@ class habitos : AppCompatActivity() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val editor = prefs.edit()
         val chavesParaRemover = mutableListOf<String>()
-
         prefs.all.forEach { (chave, valor) ->
             if (chave.startsWith("${nomeAntigo}_")) {
                 val novaChave = chave.replaceFirst(nomeAntigo, novoNome)
@@ -281,15 +376,17 @@ class habitos : AppCompatActivity() {
                 chavesParaRemover.add(chave)
             }
         }
-
         chavesParaRemover.forEach { editor.remove(it) }
-
-        val habitSet = prefs.getStringSet("habits_list", mutableSetOf())?.toMutableSet()
-        if (habitSet != null) {
-            habitSet.remove(nomeAntigo)
-            habitSet.add(novoNome)
-            editor.putStringSet("habits_list", habitSet)
+        val habitsString = prefs.getString("habits_list_ordered", null)
+        if (habitsString != null) {
+            val habitList = habitsString.split(";;;").toMutableList()
+            val index = habitList.indexOf(nomeAntigo)
+            if (index != -1) {
+                habitList[index] = novoNome
+            }
+            editor.putString("habits_list_ordered", habitList.joinToString(";;;"))
         }
+
         editor.apply()
 
         val index = habitNames.indexOf(nomeAntigo)
@@ -311,7 +408,6 @@ class habitos : AppCompatActivity() {
         val scheduleKeys = allKeys
             .filter { it.startsWith("${nomeHabito}_scheduled_days") }
             .sortedDescending()
-
         return if (scheduleKeys.isNotEmpty()) {
             prefs.getStringSet(scheduleKeys.first(), allDays) ?: allDays
         } else {
@@ -319,26 +415,11 @@ class habitos : AppCompatActivity() {
         }
     }
 
-    private fun habitos_modoExclusao(ativo: Boolean) {
-        isDeleteMode = ativo
-        habitsAdapter.modoExclusaoAtivo = ativo
-        habitsAdapter.notifyDataSetChanged()
-
-        if (ativo) {
-            fabAddHabit.hide()
-            btnDeleteSelected.visibility = View.VISIBLE
-        } else {
-            fabAddHabit.show()
-            btnDeleteSelected.visibility = View.GONE
-            habitsAdapter.limparSelecao()
-        }
-    }
-
     private fun onBotaoApagarClick() {
         val selecionados = habitsAdapter.getSelecionados()
         if (selecionados.isEmpty()) {
             Toast.makeText(this, "Nenhum hábito selecionado", Toast.LENGTH_SHORT).show()
-            habitos_modoExclusao(false)
+            desativarModoExclusao()
             return
         }
         val prefsEditor = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
@@ -351,7 +432,7 @@ class habitos : AppCompatActivity() {
         }
         prefsEditor.apply()
         salvarHabitos()
-        habitos_modoExclusao(false)
+        desativarModoExclusao()
         atualizarAdapter()
         Toast.makeText(this, "Hábitos apagados", Toast.LENGTH_SHORT).show()
     }
@@ -372,23 +453,35 @@ class habitos : AppCompatActivity() {
             startActivity(Intent(this, CronometroActivity::class.java))
         }
         navBar.findViewById<LinearLayout>(R.id.botao_sugestoes).setOnClickListener {
-            startActivity(Intent(this, configuracoes::class.java))
+            Toast.makeText(this, "Tela de Sugestões em breve!", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun salvarHabitos() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val habitsString = habitNames.joinToString(";;;")
+        Log.d("DebugHabitos", "SALVANDO lista: ${habitNames.joinToString(", ")}")
+        prefs.edit().putString("habits_list_ordered", habitsString).apply()
     }
 
     private fun carregarHabitosSalvos() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val habitSet = prefs.getStringSet("habits_list", null)
         habitNames.clear()
-
-        if (habitSet == null || habitSet.isEmpty()) {
-            habitNames.addAll(listOf("📖 Ler 10 páginas", "🏋️ Exercício", "🧘 Meditar"))
-            salvarHabitos()
-            habitNames.forEach { salvarDiasProgramados(it, allDays) }
+        val habitsString = prefs.getString("habits_list_ordered", null)
+        if (habitsString != null && habitsString.isNotEmpty()) {
+            habitNames.addAll(habitsString.split(";;;"))
         } else {
-            habitNames.addAll(habitSet)
+            val legacyHabitSet = prefs.getStringSet("habits_list", null)
+            if (legacyHabitSet == null || legacyHabitSet.isEmpty()) {
+                habitNames.addAll(listOf("📖 Ler 10 páginas", "🏋️ Exercício", "🧘 Meditar"))
+                salvarHabitos()
+                habitNames.forEach { salvarDiasProgramados(it, allDays) }
+            } else {
+                habitNames.addAll(legacyHabitSet)
+                salvarHabitos()
+                prefs.edit().remove("habits_list").apply()
+            }
         }
-
         val hoje = getHoje()
         habitNames.forEach { nome ->
             val chave = "${nome}_$hoje"
@@ -406,19 +499,46 @@ class habitos : AppCompatActivity() {
 
     private fun atualizarAdapter() {
         val hoje = getHoje()
-        val listaHabitos = habitNames.map { nome ->
+        val listaDeHabitosOrdenada = habitNames.map { nome ->
             val chave = "${nome}_$hoje"
             val contagem = habitDailyCounts[chave] ?: 0
             val sequencia = habitStreakCounts[nome] ?: 0
             val msg = gerarMensagemMotivacional(sequencia)
             Habit(id = nome, name = nome, streakDays = sequencia, message = msg, count = contagem)
         }
-        habitsAdapter.submitList(listaHabitos)
+        habitsAdapter.submitList(listaDeHabitosOrdenada)
     }
 
-    private fun salvarHabitos() {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putStringSet("habits_list", habitNames.toSet()).apply()
+    fun extrairEmoji(texto: String): String {
+        val regex = Regex("^\\p{So}")
+        return regex.find(texto)?.value ?: ""
+    }
+
+    fun removerEmoji(texto: String): String {
+        val regex = Regex("^\\p{So}\\s*")
+        return texto.replaceFirst(regex, "")
+    }
+
+    fun TextDrawable(context: Context, text: String): Drawable {
+        return object : Drawable() {
+            private val paint = Paint()
+            init {
+                paint.color = Color.WHITE
+                paint.textSize = 64f
+                paint.isAntiAlias = true
+                paint.textAlign = Paint.Align.CENTER
+                paint.typeface = Typeface.DEFAULT_BOLD
+            }
+            override fun draw(canvas: Canvas) {
+                val bounds = bounds
+                val x = bounds.centerX().toFloat()
+                val y = bounds.centerY() - (paint.descent() + paint.ascent()) / 2
+                canvas.drawText(text, x, y, paint)
+            }
+            override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+            override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+            override fun setColorFilter(colorFilter: ColorFilter?) { paint.colorFilter = colorFilter }
+        }
     }
 
     private fun gerarMensagemMotivacional(diasSeguidos: Int): String {
@@ -450,7 +570,11 @@ class habitos : AppCompatActivity() {
         val hoje = getHoje()
         val chave = "${nomeHabito}_$hoje"
         val contagemAtual = habitDailyCounts[chave] ?: 0
-        val novaContagem = (contagemAtual + delta).coerceAtLeast(0)
+
+        val novaContagem = if (delta > 0) 1 else 0
+
+        if (contagemAtual == novaContagem) return
+
         habitDailyCounts[chave] = novaContagem
         salvarContagem(chave, novaContagem)
 
@@ -461,23 +585,51 @@ class habitos : AppCompatActivity() {
 
             val diff = if (lastDateParsed != null) {
                 ((hojeDate.time - lastDateParsed.time) / (1000 * 60 * 60 * 24)).toInt()
-            } else {
-                -1
-            }
+            } else { -1 }
 
             val sequenciaAtual = habitStreakCounts[nomeHabito] ?: 0
             val novaSequencia = when {
                 diff == 1 -> sequenciaAtual + 1
                 diff > 1 || diff < 0 -> 1
-                diff == 0 -> sequenciaAtual
-                else -> 1
+                else -> sequenciaAtual
             }
 
             habitStreakCounts[nomeHabito] = novaSequencia
             habitLastMarkedDate[nomeHabito] = hoje
             salvarSequencia(nomeHabito, novaSequencia, hoje)
+
+        } else {
+            val (novaSequencia, novaUltimaData) = recalcularSequencia(nomeHabito)
+            habitStreakCounts[nomeHabito] = novaSequencia
+            habitLastMarkedDate[nomeHabito] = novaUltimaData
+            salvarSequencia(nomeHabito, novaSequencia, novaUltimaData)
         }
 
         atualizarAdapter()
+    }
+
+    private fun recalcularSequencia(nomeHabito: String): Pair<Int, String> {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        var contadorSequencia = 0
+        var ultimaDataValida = ""
+        val calendar = Calendar.getInstance()
+
+        calendar.add(Calendar.DAY_OF_YEAR, -1)
+
+        for (i in 0..365) {
+            val dataFormatada = dateFormat.format(calendar.time)
+            val chave = "${nomeHabito}_$dataFormatada"
+
+            if (prefs.getInt(chave, 0) > 0) {
+                contadorSequencia++
+                if (ultimaDataValida.isEmpty()) {
+                    ultimaDataValida = dataFormatada
+                }
+            } else {
+                break
+            }
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+        }
+        return Pair(contadorSequencia, ultimaDataValida)
     }
 }

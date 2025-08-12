@@ -1,9 +1,12 @@
 package com.apol.myapplication
 
+import android.content.Context
+import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
@@ -19,33 +22,38 @@ data class Habit(
 
 class HabitsAdapter(
     private val onItemClick: (Habit) -> Unit,
-    private val onItemLongClick: (Habit) -> Unit,
     private val onMarkDone: (Habit) -> Unit,
     private val onUndoDone: (Habit) -> Unit
 ) : RecyclerView.Adapter<HabitsAdapter.HabitViewHolder>() {
 
-    private var habits: MutableList<Habit> = mutableListOf()
+    private var habitList: MutableList<Habit> = mutableListOf()
     var modoExclusaoAtivo: Boolean = false
-
     var onExclusaoModoVazio: (() -> Unit)? = null
 
+    fun getHabitAt(position: Int): Habit? {
+        return habitList.getOrNull(position)
+    }
+
     fun submitList(novaLista: List<Habit>) {
-        habits = novaLista.toMutableList()
+        habitList.clear()
+        habitList.addAll(novaLista)
         notifyDataSetChanged()
     }
 
     fun limparSelecao() {
-        habits.forEach { it.isSelected = false }
-        modoExclusaoAtivo = false
-        notifyDataSetChanged()
+        habitList.forEach { it.isSelected = false }
     }
 
-    fun getSelecionados(): List<Habit> = habits.filter { it.isSelected }
+    fun getSelecionados(): List<Habit> = habitList.filter { it.isSelected }
 
-    fun apagarSelecionados() {
-        habits.removeAll { it.isSelected }
-        modoExclusaoAtivo = false
-        notifyDataSetChanged()
+    class HabitViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val icone: ImageView = itemView.findViewById(R.id.icone_habito)
+        val nome: TextView = itemView.findViewById(R.id.habit_name)
+        val streakDays: TextView = itemView.findViewById(R.id.text_streak_days)
+        val message: TextView = itemView.findViewById(R.id.text_streak_message)
+        val count: TextView = itemView.findViewById(R.id.habit_count)
+        val btnCheck: ImageButton = itemView.findViewById(R.id.btn_check)
+        val btnCheckDone: ImageButton = itemView.findViewById(R.id.btn_check_done)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HabitViewHolder {
@@ -54,63 +62,46 @@ class HabitsAdapter(
     }
 
     override fun onBindViewHolder(holder: HabitViewHolder, position: Int) {
-        holder.bind(habits[position])
-    }
+        val habit = habitList[position]
+        val context = holder.itemView.context
 
-    override fun getItemCount(): Int = habits.size
+        val emoji = (context as? habitos)?.extrairEmoji(habit.name) ?: ""
+        val nomeSemEmoji = (context as? habitos)?.removerEmoji(habit.name) ?: ""
 
-    inner class HabitViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val nome: TextView = itemView.findViewById(R.id.habit_name)
-        private val streakDays: TextView = itemView.findViewById(R.id.text_streak_days)
-        private val message: TextView = itemView.findViewById(R.id.text_streak_message)
-        private val count: TextView = itemView.findViewById(R.id.habit_count)
-        private val btnCheckDone: ImageButton = itemView.findViewById(R.id.btn_check_done)
-        private val btnCheck: ImageButton = itemView.findViewById(R.id.btn_check)
+        holder.nome.text = nomeSemEmoji
+        holder.streakDays.text = "${habit.streakDays} dias seguidos"
+        holder.message.text = habit.message
+        holder.count.text = habit.count.toString()
 
-        fun bind(habit: Habit) {
-            nome.text = habit.name
-            streakDays.text = "${habit.streakDays} dias seguidos"
-            message.text = habit.message
-            count.text = habit.count.toString()
+        if (emoji.isNotEmpty() && context is habitos) {
+            holder.icone.setImageDrawable(context.TextDrawable(context, emoji))
+        } else {
+            holder.icone.setImageResource(R.drawable.ic_habits)
+        }
 
-            val backgroundRes = if (habit.isSelected) R.drawable.bg_selected_note else R.drawable.rounded_semi_transparent
-            itemView.background = ContextCompat.getDrawable(itemView.context, backgroundRes)
+        val background = if (habit.isSelected) R.drawable.bg_selected_item else R.drawable.rounded_semi_transparent
+        holder.itemView.background = ContextCompat.getDrawable(context, background)
 
-            itemView.setOnClickListener {
-                if (modoExclusaoAtivo) {
-                    habit.isSelected = !habit.isSelected
-                    notifyItemChanged(adapterPosition)
+        // Lógica de visibilidade dos botões
+        if (habit.count > 0) {
+            holder.btnCheck.visibility = View.GONE
+            holder.btnCheckDone.visibility = View.VISIBLE
+        } else {
+            holder.btnCheck.visibility = View.VISIBLE
+            holder.btnCheckDone.visibility = View.GONE
+        }
 
-                    if (getSelecionados().isEmpty()) {
-                        onExclusaoModoVazio?.invoke()
-                    }
-                } else {
-                    onItemClick(habit)
-                }
-            }
+        holder.itemView.setOnClickListener {
+            onItemClick(habit)
+        }
 
-            itemView.setOnLongClickListener {
-                if (!modoExclusaoAtivo) {
-                    modoExclusaoAtivo = true
-                    habit.isSelected = true
-
-                    notifyItemChanged(adapterPosition)
-                    onItemLongClick(habit)
-                }
-                true
-            }
-
-            btnCheck.setOnClickListener {
-                if (!modoExclusaoAtivo) {
-                    onMarkDone(habit)
-                }
-            }
-
-            btnCheckDone.setOnClickListener {
-                if (!modoExclusaoAtivo) {
-                    onUndoDone(habit)
-                }
-            }
+        holder.btnCheck.setOnClickListener {
+            if (!modoExclusaoAtivo) onMarkDone(habit)
+        }
+        holder.btnCheckDone.setOnClickListener {
+            if (!modoExclusaoAtivo) onUndoDone(habit)
         }
     }
+
+    override fun getItemCount(): Int = habitList.size
 }
