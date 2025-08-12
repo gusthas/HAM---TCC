@@ -3,7 +3,12 @@ package com.apol.myapplication
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
-import android.graphics.*
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Canvas
+import android.graphics.ColorFilter
+import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Bundle
@@ -110,7 +115,8 @@ class habitos : AppCompatActivity() {
                 }
             },
             onMarkDone = { habit -> atualizarContagemDoHabito(habit.name, 1) },
-            onUndoDone = { habit -> atualizarContagemDoHabito(habit.name, -1) }
+            onUndoDone = { habit -> atualizarContagemDoHabito(habit.name, -1) },
+            onToggleFavorite = { habit -> toggleFavoriteStatus(habit) }
         )
         habitsAdapter.onExclusaoModoVazio = {
             desativarModoExclusao()
@@ -377,6 +383,7 @@ class habitos : AppCompatActivity() {
             }
         }
         chavesParaRemover.forEach { editor.remove(it) }
+
         val habitsString = prefs.getString("habits_list_ordered", null)
         if (habitsString != null) {
             val habitList = habitsString.split(";;;").toMutableList()
@@ -499,14 +506,49 @@ class habitos : AppCompatActivity() {
 
     private fun atualizarAdapter() {
         val hoje = getHoje()
-        val listaDeHabitosOrdenada = habitNames.map { nome ->
+        val favoritedNames = getFavoritedHabits()
+        val listaDeHabitos = habitNames.map { nome ->
             val chave = "${nome}_$hoje"
             val contagem = habitDailyCounts[chave] ?: 0
             val sequencia = habitStreakCounts[nome] ?: 0
             val msg = gerarMensagemMotivacional(sequencia)
-            Habit(id = nome, name = nome, streakDays = sequencia, message = msg, count = contagem)
+            Habit(
+                id = nome,
+                name = nome,
+                streakDays = sequencia,
+                message = msg,
+                count = contagem,
+                isFavorited = favoritedNames.contains(nome)
+            )
         }
-        habitsAdapter.submitList(listaDeHabitosOrdenada)
+        habitsAdapter.submitList(listaDeHabitos)
+    }
+
+    private fun toggleFavoriteStatus(habit: Habit) {
+        val favoritedHabits = getFavoritedHabits().toMutableSet()
+        if (favoritedHabits.contains(habit.name)) {
+            favoritedHabits.remove(habit.name)
+            Toast.makeText(this, "'${habit.name}' removido dos favoritos.", Toast.LENGTH_SHORT).show()
+        } else {
+            if (favoritedHabits.size >= 3) {
+                Toast.makeText(this, "Você pode favoritar no máximo 3 hábitos.", Toast.LENGTH_SHORT).show()
+                return
+            }
+            favoritedHabits.add(habit.name)
+            Toast.makeText(this, "'${habit.name}' adicionado aos favoritos.", Toast.LENGTH_SHORT).show()
+        }
+        saveFavoritedHabits(favoritedHabits)
+        atualizarAdapter()
+    }
+
+    private fun getFavoritedHabits(): Set<String> {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet("favorited_habits", emptySet()) ?: emptySet()
+    }
+
+    private fun saveFavoritedHabits(favorites: Set<String>) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putStringSet("favorited_habits", favorites).apply()
     }
 
     fun extrairEmoji(texto: String): String {
@@ -570,11 +612,8 @@ class habitos : AppCompatActivity() {
         val hoje = getHoje()
         val chave = "${nomeHabito}_$hoje"
         val contagemAtual = habitDailyCounts[chave] ?: 0
-
         val novaContagem = if (delta > 0) 1 else 0
-
         if (contagemAtual == novaContagem) return
-
         habitDailyCounts[chave] = novaContagem
         salvarContagem(chave, novaContagem)
 
@@ -582,29 +621,24 @@ class habitos : AppCompatActivity() {
             val ultimaData = habitLastMarkedDate[nomeHabito]
             val hojeDate = dateFormat.parse(hoje)!!
             val lastDateParsed = if (!ultimaData.isNullOrEmpty()) dateFormat.parse(ultimaData) else null
-
             val diff = if (lastDateParsed != null) {
                 ((hojeDate.time - lastDateParsed.time) / (1000 * 60 * 60 * 24)).toInt()
             } else { -1 }
-
             val sequenciaAtual = habitStreakCounts[nomeHabito] ?: 0
             val novaSequencia = when {
                 diff == 1 -> sequenciaAtual + 1
                 diff > 1 || diff < 0 -> 1
                 else -> sequenciaAtual
             }
-
             habitStreakCounts[nomeHabito] = novaSequencia
             habitLastMarkedDate[nomeHabito] = hoje
             salvarSequencia(nomeHabito, novaSequencia, hoje)
-
         } else {
             val (novaSequencia, novaUltimaData) = recalcularSequencia(nomeHabito)
             habitStreakCounts[nomeHabito] = novaSequencia
             habitLastMarkedDate[nomeHabito] = novaUltimaData
             salvarSequencia(nomeHabito, novaSequencia, novaUltimaData)
         }
-
         atualizarAdapter()
     }
 
@@ -613,13 +647,10 @@ class habitos : AppCompatActivity() {
         var contadorSequencia = 0
         var ultimaDataValida = ""
         val calendar = Calendar.getInstance()
-
         calendar.add(Calendar.DAY_OF_YEAR, -1)
-
         for (i in 0..365) {
             val dataFormatada = dateFormat.format(calendar.time)
             val chave = "${nomeHabito}_$dataFormatada"
-
             if (prefs.getInt(chave, 0) > 0) {
                 contadorSequencia++
                 if (ultimaDataValida.isEmpty()) {

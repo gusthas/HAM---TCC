@@ -17,34 +17,31 @@ data class Habit(
     val streakDays: Int,
     val message: String,
     val count: Int,
-    var isSelected: Boolean = false
+    var isSelected: Boolean = false,
+    var isFavorited: Boolean = false // Novo campo
 )
 
 class HabitsAdapter(
     private val onItemClick: (Habit) -> Unit,
     private val onMarkDone: (Habit) -> Unit,
-    private val onUndoDone: (Habit) -> Unit
+    private val onUndoDone: (Habit) -> Unit,
+    private val onToggleFavorite: (Habit) -> Unit // Nova função
 ) : RecyclerView.Adapter<HabitsAdapter.HabitViewHolder>() {
 
     private var habitList: MutableList<Habit> = mutableListOf()
     var modoExclusaoAtivo: Boolean = false
     var onExclusaoModoVazio: (() -> Unit)? = null
 
-    fun getHabitAt(position: Int): Habit? {
-        return habitList.getOrNull(position)
-    }
-
+    fun getHabitAt(position: Int): Habit? = habitList.getOrNull(position)
+    fun getSelecionados(): List<Habit> = habitList.filter { it.isSelected }
     fun submitList(novaLista: List<Habit>) {
         habitList.clear()
         habitList.addAll(novaLista)
         notifyDataSetChanged()
     }
-
     fun limparSelecao() {
         habitList.forEach { it.isSelected = false }
     }
-
-    fun getSelecionados(): List<Habit> = habitList.filter { it.isSelected }
 
     class HabitViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val icone: ImageView = itemView.findViewById(R.id.icone_habito)
@@ -52,6 +49,7 @@ class HabitsAdapter(
         val streakDays: TextView = itemView.findViewById(R.id.text_streak_days)
         val message: TextView = itemView.findViewById(R.id.text_streak_message)
         val count: TextView = itemView.findViewById(R.id.habit_count)
+        val btnFavorite: ImageButton = itemView.findViewById(R.id.btn_favorite)
         val btnCheck: ImageButton = itemView.findViewById(R.id.btn_check)
         val btnCheckDone: ImageButton = itemView.findViewById(R.id.btn_check_done)
     }
@@ -66,7 +64,7 @@ class HabitsAdapter(
         val context = holder.itemView.context
 
         val emoji = (context as? habitos)?.extrairEmoji(habit.name) ?: ""
-        val nomeSemEmoji = (context as? habitos)?.removerEmoji(habit.name) ?: ""
+        val nomeSemEmoji = (context as? habitos)?.removerEmoji(habit.name) ?: habit.name
 
         holder.nome.text = nomeSemEmoji
         holder.streakDays.text = "${habit.streakDays} dias seguidos"
@@ -82,7 +80,6 @@ class HabitsAdapter(
         val background = if (habit.isSelected) R.drawable.bg_selected_item else R.drawable.rounded_semi_transparent
         holder.itemView.background = ContextCompat.getDrawable(context, background)
 
-        // Lógica de visibilidade dos botões
         if (habit.count > 0) {
             holder.btnCheck.visibility = View.GONE
             holder.btnCheckDone.visibility = View.VISIBLE
@@ -91,16 +88,16 @@ class HabitsAdapter(
             holder.btnCheckDone.visibility = View.GONE
         }
 
-        holder.itemView.setOnClickListener {
-            onItemClick(habit)
+        if (habit.isFavorited) {
+            holder.btnFavorite.setImageResource(R.drawable.ic_star_outline)
+        } else {
+            holder.btnFavorite.setImageResource(R.drawable.ic_star_filled)
         }
 
-        holder.btnCheck.setOnClickListener {
-            if (!modoExclusaoAtivo) onMarkDone(habit)
-        }
-        holder.btnCheckDone.setOnClickListener {
-            if (!modoExclusaoAtivo) onUndoDone(habit)
-        }
+        holder.itemView.setOnClickListener { onItemClick(habit) }
+        holder.btnFavorite.setOnClickListener { if (!modoExclusaoAtivo) onToggleFavorite(habit) }
+        holder.btnCheck.setOnClickListener { if (!modoExclusaoAtivo) onMarkDone(habit) }
+        holder.btnCheckDone.setOnClickListener { if (!modoExclusaoAtivo) onUndoDone(habit) }
     }
 
     override fun getItemCount(): Int = habitList.size

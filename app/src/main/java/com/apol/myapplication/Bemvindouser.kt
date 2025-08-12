@@ -2,12 +2,7 @@ package com.apol.myapplication
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Canvas
-import android.graphics.ColorFilter
-import android.graphics.PixelFormat
-import android.graphics.Typeface
+import android.graphics.*
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.View
@@ -74,7 +69,7 @@ class Bemvindouser : AppCompatActivity() {
 
         if (userEmail == null) {
             welcomeTextView.text = "Bem-vindo(a)!"
-            profileImageView.setImageResource(R.drawable.ic_person_placeholder) // Crie um ícone de placeholder
+            profileImageView.setImageResource(R.drawable.ic_person_placeholder)
             return
         }
 
@@ -85,12 +80,14 @@ class Bemvindouser : AppCompatActivity() {
                     val saudacao = if (user.genero.equals("Feminino", ignoreCase = true)) "Bem-vinda" else "Bem-vindo"
                     welcomeTextView.text = "$saudacao, ${user.nome}!"
 
+                    // Tenta carregar a foto de perfil
                     if (!user.profilePicUri.isNullOrEmpty()) {
                         Glide.with(this@Bemvindouser)
                             .load(user.profilePicUri)
                             .apply(RequestOptions.circleCropTransform())
                             .into(profileImageView)
                     } else {
+                        // Se não houver foto, usa a NOVA InitialsDrawable
                         val initials = user.nome.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
                         val placeholder = InitialsDrawable(initials, ContextCompat.getColor(this@Bemvindouser, R.color.roxo))
                         profileImageView.setImageDrawable(placeholder)
@@ -199,38 +196,57 @@ class Bemvindouser : AppCompatActivity() {
 
     private fun carregarTop3Habitos() {
         val prefs = getSharedPreferences("habitos_prefs", Context.MODE_PRIVATE)
+        val favoritedNames = prefs.getStringSet("favorited_habits", emptySet()) ?: emptySet()
         val habitsString = prefs.getString("habits_list_ordered", null)
-        val listaHabitos = habitsString?.split(";;;") ?: emptyList()
-        val top3 = listaHabitos.take(3)
+        val allHabits = if (!habitsString.isNullOrEmpty()) habitsString.split(";;;") else emptyList()
+
+        val favoritedHabits = allHabits.filter { favoritedNames.contains(it) }
+        val nonFavoritedHabits = allHabits.filterNot { favoritedNames.contains(it) }
+
+        val displayList = (favoritedHabits + nonFavoritedHabits)
+        val top3 = displayList.take(3)
 
         val widgetHabitos = findViewById<View>(R.id.widgetHabitos)
-        val blocos = listOf(
-            widgetHabitos.findViewById<LinearLayout>(R.id.blocoLeitura),
-            widgetHabitos.findViewById<LinearLayout>(R.id.blocoExercicio),
-            widgetHabitos.findViewById<LinearLayout>(R.id.blocoMeditar)
+        val slots = listOf(
+            Triple(
+                widgetHabitos.findViewById<View>(R.id.habito_slot_1),
+                widgetHabitos.findViewById<ImageView>(R.id.habito_icon_1),
+                widgetHabitos.findViewById<TextView>(R.id.habito_text_1)
+            ),
+            Triple(
+                widgetHabitos.findViewById<View>(R.id.habito_slot_2),
+                widgetHabitos.findViewById<ImageView>(R.id.habito_icon_2),
+                widgetHabitos.findViewById<TextView>(R.id.habito_text_2)
+            ),
+            Triple(
+                widgetHabitos.findViewById<View>(R.id.habito_slot_3),
+                widgetHabitos.findViewById<ImageView>(R.id.habito_icon_3),
+                widgetHabitos.findViewById<TextView>(R.id.habito_text_3)
+            )
         )
 
-        for (i in blocos.indices) {
-            val bloco = blocos[i]
+        for (i in slots.indices) {
+            val (slotView, iconView, textView) = slots[i]
             val habito = top3.getOrNull(i)
-            val imageView = bloco.getChildAt(0) as ImageView
-            val textView = bloco.getChildAt(1) as TextView
 
-            if (habito != null && habito.isNotEmpty()) {
+            if (habito != null) {
+                slotView.visibility = View.VISIBLE
                 val emoji = extrairEmoji(habito)
                 val nome = removerEmoji(habito)
+
                 if (emoji.isNotEmpty()) {
-                    imageView.setImageDrawable(TextDrawable(this, emoji))
-                    imageView.visibility = View.VISIBLE
+                    // Usa a SUA TextDrawable original para os emojis
+                    iconView.setImageDrawable(TextDrawable(this, emoji))
+                    iconView.visibility = View.VISIBLE
                 } else {
-                    imageView.visibility = View.GONE
+                    iconView.visibility = View.GONE
                 }
                 textView.text = nome
-                bloco.setOnClickListener {
+                slotView.setOnClickListener {
                     incrementarHabito(habito)
                 }
             } else {
-                bloco.visibility = View.GONE
+                slotView.visibility = View.GONE
             }
         }
     }
@@ -259,6 +275,8 @@ class Bemvindouser : AppCompatActivity() {
         return sdf.format(Date())
     }
 
+    // A sua classe TextDrawable original, aninhada aqui dentro.
+    // Ela funciona bem para os emojis e não precisa ser alterada.
     class TextDrawable(context: Context, private val text: String) : Drawable() {
         private val paint = Paint()
         init {
@@ -275,6 +293,7 @@ class Bemvindouser : AppCompatActivity() {
             canvas.drawText(text, x, y, paint)
         }
         override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+        @Deprecated("Deprecated in Java")
         override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
         override fun setColorFilter(colorFilter: ColorFilter?) { paint.colorFilter = colorFilter }
     }
