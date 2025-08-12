@@ -20,6 +20,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+
         db = AppDatabase.getDatabase(this)
         userDao = db.userDao()
 
@@ -28,10 +29,14 @@ class MainActivity : AppCompatActivity() {
         val btnLogin = findViewById<Button>(R.id.buttonavancarinfousuario)
         val tvCadastrese = findViewById<TextView>(R.id.textView8)
         val btnAdmin = findViewById<Button>(R.id.btn_admin_users)
+        val tvEsqueceuSenha = findViewById<TextView>(R.id.textView5)
+
+
 
         btnAdmin.setOnClickListener {
             startActivity(Intent(this, AdminUsersActivity::class.java))
         }
+
 
         btnLogin.setOnClickListener {
             val email = etEmail.text.toString().trim()
@@ -76,6 +81,9 @@ class MainActivity : AppCompatActivity() {
 
         tvCadastrese.setOnClickListener {
             startActivity(Intent(this, RegistroActivity::class.java))
+        }
+        tvEsqueceuSenha.setOnClickListener {
+            startActivity(Intent(this, RecuperarSenhaActivity::class.java))
         }
     }
 }

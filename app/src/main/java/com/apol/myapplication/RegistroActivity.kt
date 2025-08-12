@@ -34,6 +34,13 @@ class RegistroActivity : AppCompatActivity() {
         btnRegistrar.setOnClickListener {
             val email = etEmail.text.toString().trim()
             val senha = etSenha.text.toString().trim()
+            val pergunta = findViewById<EditText>(R.id.editTextPergunta).text.toString().trim()
+            val resposta = findViewById<EditText>(R.id.editTextResposta).text.toString().trim()
+
+            if (email.isEmpty() || senha.isEmpty() || pergunta.isEmpty() || resposta.isEmpty()) {
+                Toast.makeText(this, "Preencha todos os campos", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
 
             // --- INÍCIO DA VALIDAÇÃO ---
             if (!isEmailValid(email)) {
@@ -55,6 +62,8 @@ class RegistroActivity : AppCompatActivity() {
                         email = email,
                         password = senha,
                         userId = email,
+                        perguntaSecreta = pergunta, // Salva a pergunta
+                        respostaSecreta = resposta, // Salva a resposta
                         nome = "", idade = 0, peso = 0, altura = 0f, genero = ""
                     )
                     userDao.insertUser(newUser)

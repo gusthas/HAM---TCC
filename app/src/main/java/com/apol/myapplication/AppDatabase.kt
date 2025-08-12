@@ -14,7 +14,7 @@ import com.apol.myapplication.data.model.TreinoEntity
 import com.apol.myapplication.data.model.TreinoNota
 import com.apol.myapplication.data.model.User
 
-@Database(entities = [User::class, TreinoEntity::class, DivisaoTreino::class, TreinoNota::class], version = 8)
+@Database(entities = [User::class, TreinoEntity::class, DivisaoTreino::class, TreinoNota::class], version = 9)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun userDao(): UserDao
@@ -32,7 +32,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "app_database"
                 )
                     // A CADEIA DE MIGRAÇÕES COMPLETA, COMO ANTES
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .build()
                 INSTANCE = instance
                 instance
@@ -80,6 +80,12 @@ abstract class AppDatabase : RoomDatabase() {
                 // Apaga a tabela de LogEntry que estava errada e recria a TreinoNota
                 database.execSQL("DROP TABLE IF EXISTS log_entries")
                 database.execSQL("CREATE TABLE IF NOT EXISTS `treino_notas` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `divisaoId` INTEGER NOT NULL, `titulo` TEXT NOT NULL, `conteudo` TEXT NOT NULL, FOREIGN KEY(`divisaoId`) REFERENCES `divisoes_treino`(`id`) ON DELETE CASCADE)")
+            }
+        }
+        val MIGRATION_8_9: Migration = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE users ADD COLUMN perguntaSecreta TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE users ADD COLUMN respostaSecreta TEXT NOT NULL DEFAULT ''")
             }
         }
     }

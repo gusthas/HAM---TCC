@@ -5,7 +5,15 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.widget.*
+import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -40,6 +48,7 @@ class configuracoes : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Recarrega os dados caso o usuário tenha editado o perfil e voltado
         carregarDadosDoUsuario()
     }
 
@@ -57,6 +66,7 @@ class configuracoes : AppCompatActivity() {
                 }
             }
         } else {
+            // Se por algum motivo não encontrar um usuário logado, volta para a tela de login
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         }
@@ -83,29 +93,21 @@ class configuracoes : AppCompatActivity() {
         }
 
         findViewById<LinearLayout>(R.id.opcao_alterar_senha).setOnClickListener {
-            Toast.makeText(this, "Função não implementada.", Toast.LENGTH_SHORT).show()
+            exibirDialogoAlterarSenha()
         }
 
-        // --- LÓGICA CORRIGIDA E COMPLETA AQUI ---
         findViewById<LinearLayout>(R.id.sobre_app).setOnClickListener {
-            // Infla o layout do diálogo que criamos
             val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_sobre_app, null)
-
-            // Cria o AlertDialog
             val alertDialog = AlertDialog.Builder(this)
                 .setView(dialogView)
                 .setCancelable(true)
                 .create()
 
-            // Aplica fundo transparente para o layout arredondado aparecer direito
             alertDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-            // Configura o botão fechar do diálogo
             dialogView.findViewById<Button>(R.id.btn_fechar_sobre).setOnClickListener {
                 alertDialog.dismiss()
             }
-
-            // Mostra o diálogo na tela
             alertDialog.show()
         }
     }
@@ -170,6 +172,60 @@ class configuracoes : AppCompatActivity() {
         alertDialog.show()
     }
 
+    private fun exibirDialogoAlterarSenha() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_alterar_senha, null)
+        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val layoutSenhaAtual = dialogView.findViewById<LinearLayout>(R.id.layoutEtapaSenhaAtual)
+        val layoutNovaSenha = dialogView.findViewById<LinearLayout>(R.id.layoutEtapaNovaSenhaConfig)
+        val editSenhaAtual = dialogView.findViewById<EditText>(R.id.editTextSenhaAtual)
+        val btnVerificarSenha = dialogView.findViewById<Button>(R.id.btnVerificarSenhaAtual)
+        val editNovaSenha = dialogView.findViewById<EditText>(R.id.editTextNovaSenhaConfig)
+        val btnSalvarNovaSenha = dialogView.findViewById<Button>(R.id.btnSalvarNovaSenhaConfig)
+        val btnFechar = dialogView.findViewById<Button>(R.id.btn_fechar_alterar_senha)
+
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val userEmail = prefs.getString("LOGGED_IN_USER_EMAIL", null) ?: return
+
+        btnVerificarSenha.setOnClickListener {
+            val senhaAtualDigitada = editSenhaAtual.text.toString()
+            lifecycleScope.launch {
+                val user = db.userDao().getUserByEmail(userEmail)
+                runOnUiThread {
+                    if (user != null && user.password == senhaAtualDigitada) {
+                        layoutSenhaAtual.visibility = View.GONE
+                        layoutNovaSenha.visibility = View.VISIBLE
+                    } else {
+                        Toast.makeText(this@configuracoes, "Senha atual incorreta.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        btnSalvarNovaSenha.setOnClickListener {
+            val novaSenha = editNovaSenha.text.toString().trim()
+            if (novaSenha.length < 6 || novaSenha.length > 15) {
+                Toast.makeText(this, "A nova senha deve ter entre 6 e 15 caracteres.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                val user = db.userDao().getUserByEmail(userEmail)
+                user?.let {
+                    val updatedUser = it.copy(password = novaSenha)
+                    db.userDao().updateUser(updatedUser)
+                    runOnUiThread {
+                        Toast.makeText(this@configuracoes, "Senha alterada com sucesso!", Toast.LENGTH_SHORT).show()
+                        dialog.dismiss()
+                    }
+                }
+            }
+        }
+
+        btnFechar.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data != null) {
@@ -178,6 +234,7 @@ class configuracoes : AppCompatActivity() {
             Glide.with(this).load(selectedImageUri).circleCrop().into(imagemPerfil)
         }
     }
+
     private fun configurarNavBar() {
         val navBar = findViewById<LinearLayout>(R.id.navigation_bar)
         navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {
@@ -200,3 +257,5 @@ class configuracoes : AppCompatActivity() {
         }
     }
 }
+
+

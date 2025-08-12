@@ -1,108 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:overScrollMode="never">
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/rounded_escuro">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Alterar Senha"
+        android:textColor="@color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="24dp"/>
 
     <LinearLayout
+        android:id="@+id/layoutEtapaSenhaAtual"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Digite sua senha atual"
+            android:textColorHint="#80000000"
+            app:boxBackgroundColor="#B3FFFFFF"
+            app:passwordToggleEnabled="true"
+            app:passwordToggleTint="@android:color/black"
+            style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox.Dense">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editTextSenhaAtual"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:textColor="@android:color/black"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <Button
+            android:id="@+id/btnVerificarSenhaAtual"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Verificar"
+            android:layout_marginTop="16dp"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layoutEtapaNovaSenhaConfig"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/rounded_escuro"
-        android:padding="24dp">
+        android:visibility="gone">
 
-        <TextView
-            android:id="@+id/titulo_alterar_senha"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Alterar Senha"
-            android:textSize="20sp"
-            android:textColor="@color/white"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginBottom="20dp" />
-
-        <EditText
-            android:id="@+id/edit_email_recuperacao"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Digite seu e-mail"
-            android:inputType="textEmailAddress"
-            android:textColor="@color/white"
-            android:textColorHint="#AAAAAA" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="horizontal"
-            android:gravity="end">
-
-            <Button
-                android:id="@+id/btn_enviar_codigo"
-                android:layout_width="wrap_content"
+            android:hint="Digite a nova senha"
+            android:textColorHint="#80000000"
+            app:boxBackgroundColor="#B3FFFFFF"
+            app:passwordToggleEnabled="true"
+            app:passwordToggleTint="@android:color/black"
+            style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox.Dense">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editTextNovaSenhaConfig"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Enviar Código" />
-        </LinearLayout>
-
-        <EditText
-            android:id="@+id/edit_codigo_email"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Código do Gmail"
-            android:inputType="number"
-            android:layout_marginTop="16dp"
-            android:textColor="@color/white"
-            android:textColorHint="#AAAAAA" />
+                android:inputType="textPassword"
+                android:textColor="@android:color/black"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
         <Button
-            android:id="@+id/btn_confirmar_codigo"
+            android:id="@+id/btnSalvarNovaSenhaConfig"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Confirmar"
-            android:layout_marginTop="24dp" />
-
-        <!-- Após a validação, exibir as próximas caixas (pode ser feito programaticamente) -->
-        <LinearLayout
-            android:id="@+id/layout_nova_senha"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginTop="24dp">
-
-            <EditText
-                android:id="@+id/edit_nova_senha"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Nova Senha"
-                android:inputType="textPassword"
-                android:textColor="@color/white"
-                android:textColorHint="#AAAAAA" />
-
-            <EditText
-                android:id="@+id/edit_confirmar_senha"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Repita a nova senha"
-                android:inputType="textPassword"
-                android:textColor="@color/white"
-                android:textColorHint="#AAAAAA"
-                android:layout_marginTop="12dp" />
-
-            <Button
-                android:id="@+id/btn_alterar_senha"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Alterar Senha"
-                android:layout_marginTop="20dp" />
-        </LinearLayout>
-
-        <Button
-            android:id="@+id/btn_fechar_alterar_senha"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Fechar"
-            android:layout_marginTop="24dp" />
+            android:text="Salvar Nova Senha"
+            android:layout_marginTop="16dp"/>
     </LinearLayout>
-</ScrollView>
+
+    <Button
+        android:id="@+id/btn_fechar_alterar_senha"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Fechar"
+        android:textColor="@android:color/white"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"/>
+
+</LinearLayout>

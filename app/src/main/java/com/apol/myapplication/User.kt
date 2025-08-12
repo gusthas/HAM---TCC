@@ -14,6 +14,8 @@ data class User(
     val peso: Int,
     val altura: Float,
     val genero: String,
+    val perguntaSecreta: String = "",
+    val respostaSecreta: String = "",
 
     // ▼▼▼ CAMPO ADICIONADO PARA A FOTO DE PERFIL ▼▼▼
     val profilePicUri: String? = null
