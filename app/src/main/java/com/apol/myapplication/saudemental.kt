@@ -1,6 +1,6 @@
-// Substitua o conteúdo COMPLETO do seu arquivo saudemental.kt
 package com.apol.myapplication
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
@@ -10,8 +10,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import java.text.SimpleDateFormat
+import java.util.*
 
 class saudemental : AppCompatActivity() {
+
+    // "Dicionário" para transformar os hábitos ruins em metas positivas
+    private val mapaDeHabitosRuins = mapOf(
+        "Fumar" to "🚭 Fumar Menos",
+        "Beber" to "🚱 Não Beber",
+        "Sono ruim" to "😴 Dormir Melhor",
+        "Procrastinação" to "✅ Não Procrastinar",
+        "Uso excessivo do celular" to "📵 Usar Menos o Celular"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,40 +35,36 @@ class saudemental : AppCompatActivity() {
             insets
         }
 
-        // --- Referências para as checkboxes ---
-        // Pergunta 1: Hábitos
+        // Referências para as checkboxes
         val checkFumar = findViewById<CheckBox>(R.id.checkBoxfumar)
         val checkBeber = findViewById<CheckBox>(R.id.checkBox2beber)
         val checkSonoRuim = findViewById<CheckBox>(R.id.checkBox3sonoruim)
         val checkProcrastinacao = findViewById<CheckBox>(R.id.checkBox4procastinacao)
         val checkUsoCelular = findViewById<CheckBox>(R.id.checkBox5usoexcessivodocelular)
-        val checkNenhumHabito = findViewById<CheckBox>(R.id.checkBoxNenhumHabito) // NOVO
-        val listaHabitos = listOf(checkFumar, checkBeber, checkSonoRuim, checkProcrastinacao, checkUsoCelular)
+        val checkNenhumHabito = findViewById<CheckBox>(R.id.checkBoxNenhumHabito)
+        val listaHabitosChecks = listOf(checkFumar, checkBeber, checkSonoRuim, checkProcrastinacao, checkUsoCelular)
 
-        // Pergunta 2: Emocional
         val checkAnsiedade = findViewById<CheckBox>(R.id.checkBox6ansiedade)
         val checkDepressao = findViewById<CheckBox>(R.id.checkBox7depressao)
         val checkEstresse = findViewById<CheckBox>(R.id.checkBox8estresse)
         val checkFaltaMotivacao = findViewById<CheckBox>(R.id.checkBox9faltademotivacao)
-        val checkSemProblema = findViewById<CheckBox>(R.id.checkBoxSemProblema) // NOVO
+        val checkSemProblema = findViewById<CheckBox>(R.id.checkBoxSemProblema)
         val listaEmocional = listOf(checkAnsiedade, checkDepressao, checkEstresse, checkFaltaMotivacao)
 
-        // --- Lógica de Interação ---
-        // Lógica para a opção "Nenhum" da Pergunta 1
+        // Lógica de interação
         checkNenhumHabito.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                listaHabitos.forEach { it.isChecked = false; it.isEnabled = false }
+                listaHabitosChecks.forEach { it.isChecked = false; it.isEnabled = false }
             } else {
-                listaHabitos.forEach { it.isEnabled = true }
+                listaHabitosChecks.forEach { it.isEnabled = true }
             }
         }
-        listaHabitos.forEach { checkBox ->
+        listaHabitosChecks.forEach { checkBox ->
             checkBox.setOnCheckedChangeListener { _, isChecked ->
                 if (isChecked) checkNenhumHabito.isChecked = false
             }
         }
 
-        // Lógica para a opção "Nenhum" da Pergunta 2
         checkSemProblema.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 listaEmocional.forEach { it.isChecked = false; it.isEnabled = false }
@@ -71,31 +78,75 @@ class saudemental : AppCompatActivity() {
             }
         }
 
-        // --- Botão Avançar ---
+        // Botão Avançar
         val btnAvancar = findViewById<Button>(R.id.buttonavancarsaudemental)
         btnAvancar.setOnClickListener {
-            if (validarRespostas(listaHabitos, checkNenhumHabito, listaEmocional, checkSemProblema)) {
-                // Aqui você pode salvar as respostas do usuário antes de avançar
+            if (validarRespostas(listaHabitosChecks, checkNenhumHabito, listaEmocional, checkSemProblema)) {
 
-                val intent = Intent(this, pergunta01::class.java)
+                // Pega os hábitos marcados
+                val habitosMarcados = listaHabitosChecks
+                    .filter { it.isChecked }
+                    .map { it.text.toString() }
+
+                if (habitosMarcados.isNotEmpty()) {
+                    salvarHabitosSelecionados(habitosMarcados)
+                }
+
+                val intent = Intent(this, pergunta01::class.java) // Navega para a próxima tela
                 startActivity(intent)
-                finish() // Adicionado para fechar a tela de perguntas
+                finish()
             } else {
                 Toast.makeText(this, "Por favor, selecione uma opção para cada pergunta!", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Função de validação atualizada para a nova lógica
     private fun validarRespostas(
         habitos: List<CheckBox>, nenhumHabito: CheckBox,
         emocional: List<CheckBox>, semProblema: CheckBox
     ): Boolean {
-        // Valida se pelo menos uma opção da pergunta 1 foi marcada
         val pergunta1Respondida = habitos.any { it.isChecked } || nenhumHabito.isChecked
-        // Valida se pelo menos uma opção da pergunta 2 foi marcada
         val pergunta2Respondida = emocional.any { it.isChecked } || semProblema.isChecked
-
         return pergunta1Respondida && pergunta2Respondida
+    }
+
+    private fun salvarHabitosSelecionados(habitosSelecionados: List<String>) {
+        val prefs = getSharedPreferences("habitos_prefs", Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+
+        // --- LÓGICA PRINCIPAL ---
+        // 1. Carrega a lista de hábitos que já existem
+        val habitsString = prefs.getString("habits_list_ordered", null)
+        val listaAtual = if (!habitsString.isNullOrEmpty()) habitsString.split(";;;").toMutableList() else mutableListOf()
+
+        // 2. Carrega a lista de hábitos RUINS que já existem
+        val badHabitsSet = prefs.getStringSet("bad_habits_list", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
+
+        // 3. Transforma os hábitos ruins selecionados em metas positivas
+        val novasMetas = habitosSelecionados.mapNotNull { mapaDeHabitosRuins[it] }
+
+        // 4. Adiciona as novas metas à lista principal e à lista de hábitos ruins
+        novasMetas.forEach { meta ->
+            if (!listaAtual.contains(meta)) {
+                listaAtual.add(meta) // Adiciona na lista principal
+                badHabitsSet.add(meta) // Adiciona na lista de hábitos ruins
+            }
+        }
+
+        // 5. Salva as duas listas atualizadas
+        editor.putString("habits_list_ordered", listaAtual.joinToString(";;;"))
+        editor.putStringSet("bad_habits_list", badHabitsSet)
+
+        // 6. Salva a configuração de dias padrão para cada nova meta
+        val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+        val hojeFormatado = dateFormat.format(Date())
+        val allDays = setOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
+
+        novasMetas.forEach { nomeDaMeta ->
+            val chaveDias = "${nomeDaMeta}_scheduled_days_$hojeFormatado"
+            editor.putStringSet(chaveDias, allDays)
+        }
+
+        editor.apply()
     }
 }

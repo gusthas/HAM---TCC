@@ -3,12 +3,7 @@ package com.apol.myapplication
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Canvas
-import android.graphics.ColorFilter
-import android.graphics.PixelFormat
-import android.graphics.Typeface
+import android.graphics.*
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Bundle
@@ -40,11 +35,14 @@ class habitos : AppCompatActivity() {
     private lateinit var btnDeleteSelected: ImageButton
     private lateinit var itemTouchHelper: ItemTouchHelper
     private lateinit var clickOutsideView: View
+    private lateinit var habitsTitle: TextView
+    private lateinit var btnToggleHabits: ImageButton
 
     private val PREFS_NAME = "habitos_prefs"
     private val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
     private val allDays = setOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
     private var isDeleteMode = false
+    private var mostrandoHabitosBons = true
 
     private val habitNames = mutableListOf<String>()
     private val habitDailyCounts = mutableMapOf<String, Int>()
@@ -65,8 +63,10 @@ class habitos : AppCompatActivity() {
         fabAddHabit = findViewById(R.id.fab_add_habit)
         btnDeleteSelected = findViewById(R.id.btn_delete_selected)
         clickOutsideView = findViewById(R.id.click_outside_view)
-        configurarNavigationBar()
+        habitsTitle = findViewById(R.id.habits_title)
+        btnToggleHabits = findViewById(R.id.button_toggle_mode)
 
+        configurarNavigationBar()
         setupRecyclerView()
         setupListeners()
 
@@ -79,9 +79,7 @@ class habitos : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        carregarHabitosSalvos()
-        carregarSequencias()
-        atualizarAdapter()
+        atualizarTelaDeHabitos()
     }
 
     override fun onBackPressed() {
@@ -102,6 +100,10 @@ class habitos : AppCompatActivity() {
         }
         clickOutsideView.setOnClickListener {
             if (isDeleteMode) desativarModoExclusao()
+        }
+        btnToggleHabits.setOnClickListener {
+            mostrandoHabitosBons = !mostrandoHabitosBons
+            atualizarTelaDeHabitos()
         }
     }
 
@@ -135,8 +137,10 @@ class habitos : AppCompatActivity() {
             ): Boolean {
                 val fromPosition = viewHolder.adapterPosition
                 val toPosition = target.adapterPosition
-                Collections.swap(habitNames, fromPosition, toPosition)
-                habitsAdapter.notifyItemMoved(fromPosition, toPosition)
+                if (fromPosition != RecyclerView.NO_POSITION && toPosition != RecyclerView.NO_POSITION) {
+                    Collections.swap(habitNames, fromPosition, toPosition)
+                    habitsAdapter.notifyItemMoved(fromPosition, toPosition)
+                }
                 return true
             }
 
@@ -165,6 +169,13 @@ class habitos : AppCompatActivity() {
         }
         itemTouchHelper = ItemTouchHelper(callback)
         itemTouchHelper.attachToRecyclerView(recyclerViewHabits)
+    }
+
+    private fun atualizarTelaDeHabitos() {
+        habitsTitle.text = if (mostrandoHabitosBons) "Seus Hábitos Bons" else "Seus Hábitos Ruins"
+        carregarHabitosSalvos()
+        carregarSequencias()
+        atualizarAdapter()
     }
 
     private fun ativarModoExclusao(primeiroItem: Habit?) {
@@ -202,9 +213,7 @@ class habitos : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Excluir Hábitos")
             .setMessage("Tem certeza que deseja apagar ${habitosParaApagar.size} hábito(s)?")
-            .setPositiveButton("Excluir") { _, _ ->
-                onBotaoApagarClick()
-            }
+            .setPositiveButton("Excluir") { _, _ -> onBotaoApagarClick() }
             .setNegativeButton("Cancelar", null)
             .show()
     }
@@ -213,25 +222,20 @@ class habitos : AppCompatActivity() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_opcoes_habito, null)
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
         val title = dialogView.findViewById<TextView>(R.id.dialog_options_title)
         title.text = habit.name
-
         val btnProgresso = dialogView.findViewById<Button>(R.id.btn_ver_progresso)
         val btnEditar = dialogView.findViewById<Button>(R.id.btn_editar_habito)
-
         btnProgresso.setOnClickListener {
             val intent = Intent(this, activity_progresso_habito::class.java)
             intent.putExtra("habit_name", habit.name)
             startActivity(intent)
             dialog.dismiss()
         }
-
         btnEditar.setOnClickListener {
             mostrarDialogoEditarHabito(habit)
             dialog.dismiss()
         }
-
         dialog.show()
     }
 
@@ -243,41 +247,32 @@ class habitos : AppCompatActivity() {
         etHabitName.setText(habit.name)
         etHabitName.isEnabled = true
         etHabitName.alpha = 1.0f
-
         val toggles = mapOf(
-            "SUN" to dialogView.findViewById<ToggleButton>(R.id.toggle_dom),
-            "MON" to dialogView.findViewById<ToggleButton>(R.id.toggle_seg),
-            "TUE" to dialogView.findViewById<ToggleButton>(R.id.toggle_ter),
-            "WED" to dialogView.findViewById<ToggleButton>(R.id.toggle_qua),
-            "THU" to dialogView.findViewById<ToggleButton>(R.id.toggle_qui),
-            "FRI" to dialogView.findViewById<ToggleButton>(R.id.toggle_sex),
+            "SUN" to dialogView.findViewById<ToggleButton>(R.id.toggle_dom), "MON" to dialogView.findViewById<ToggleButton>(R.id.toggle_seg),
+            "TUE" to dialogView.findViewById<ToggleButton>(R.id.toggle_ter), "WED" to dialogView.findViewById<ToggleButton>(R.id.toggle_qua),
+            "THU" to dialogView.findViewById<ToggleButton>(R.id.toggle_qui), "FRI" to dialogView.findViewById<ToggleButton>(R.id.toggle_sex),
             "SAT" to dialogView.findViewById<ToggleButton>(R.id.toggle_sab)
         )
-
         val diasAtuais = carregarDiasProgramados(habit.name)
         toggles.forEach { (dia, toggle) ->
             if (diasAtuais.contains(dia)) {
                 toggle.isChecked = true
             }
         }
-
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setPositiveButton("Salvar", null)
             .setNegativeButton("Cancelar", null)
             .create()
-
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.setOnShowListener {
             val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
             val negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
             positiveButton.setTextColor(resources.getColor(R.color.roxo, theme))
             negativeButton.setTextColor(resources.getColor(R.color.roxo, theme))
-
             positiveButton.setOnClickListener {
                 val novoNome = etHabitName.text.toString().trim()
                 val nomeAntigo = habit.name
-
                 if (novoNome.isEmpty()) {
                     Toast.makeText(this, "O nome não pode ser vazio.", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
@@ -289,17 +284,11 @@ class habitos : AppCompatActivity() {
                 if (novoNome != nomeAntigo) {
                     renomearHabito(nomeAntigo, novoNome)
                 }
-
                 val selectedDays = toggles.filter { it.value.isChecked }.keys
                 val daysToSave = if (selectedDays.isEmpty()) allDays else selectedDays
                 salvarDiasProgramados(novoNome, daysToSave)
-
                 Toast.makeText(this, "Hábito atualizado!", Toast.LENGTH_SHORT).show()
-
-                carregarHabitosSalvos()
-                carregarSequencias()
-                atualizarAdapter()
-
+                atualizarTelaDeHabitos()
                 dialog.dismiss()
             }
         }
@@ -311,30 +300,23 @@ class habitos : AppCompatActivity() {
         val etHabitName = dialogView.findViewById<EditText>(R.id.et_habit_name)
         val title = dialogView.findViewById<TextView>(R.id.dialog_title)
         title.text = "Novo Hábito"
-
         val toggles = mapOf(
-            "SUN" to dialogView.findViewById<ToggleButton>(R.id.toggle_dom),
-            "MON" to dialogView.findViewById<ToggleButton>(R.id.toggle_seg),
-            "TUE" to dialogView.findViewById<ToggleButton>(R.id.toggle_ter),
-            "WED" to dialogView.findViewById<ToggleButton>(R.id.toggle_qua),
-            "THU" to dialogView.findViewById<ToggleButton>(R.id.toggle_qui),
-            "FRI" to dialogView.findViewById<ToggleButton>(R.id.toggle_sex),
+            "SUN" to dialogView.findViewById<ToggleButton>(R.id.toggle_dom), "MON" to dialogView.findViewById<ToggleButton>(R.id.toggle_seg),
+            "TUE" to dialogView.findViewById<ToggleButton>(R.id.toggle_ter), "WED" to dialogView.findViewById<ToggleButton>(R.id.toggle_qua),
+            "THU" to dialogView.findViewById<ToggleButton>(R.id.toggle_qui), "FRI" to dialogView.findViewById<ToggleButton>(R.id.toggle_sex),
             "SAT" to dialogView.findViewById<ToggleButton>(R.id.toggle_sab)
         )
-
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setPositiveButton("Adicionar", null)
             .setNegativeButton("Cancelar", null)
             .create()
-
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.setOnShowListener {
             val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
             val negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
             positiveButton.setTextColor(resources.getColor(R.color.roxo, theme))
             negativeButton.setTextColor(resources.getColor(R.color.roxo, theme))
-
             positiveButton.setOnClickListener {
                 val texto = etHabitName.text.toString().trim()
                 if (texto.isNotEmpty()) {
@@ -371,10 +353,7 @@ class habitos : AppCompatActivity() {
                 when (valor) {
                     is Int -> editor.putInt(novaChave, valor)
                     is String -> editor.putString(novaChave, valor)
-                    is Set<*> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        editor.putStringSet(novaChave, valor as? Set<String>)
-                    }
+                    is Set<*> -> {@Suppress("UNCHECKED_CAST") editor.putStringSet(novaChave, valor as? Set<String>)}
                     is Boolean -> editor.putBoolean(novaChave, valor)
                     is Float -> editor.putFloat(novaChave, valor)
                     is Long -> editor.putLong(novaChave, valor)
@@ -383,7 +362,6 @@ class habitos : AppCompatActivity() {
             }
         }
         chavesParaRemover.forEach { editor.remove(it) }
-
         val habitsString = prefs.getString("habits_list_ordered", null)
         if (habitsString != null) {
             val habitList = habitsString.split(";;;").toMutableList()
@@ -393,9 +371,7 @@ class habitos : AppCompatActivity() {
             }
             editor.putString("habits_list_ordered", habitList.joinToString(";;;"))
         }
-
         editor.apply()
-
         val index = habitNames.indexOf(nomeAntigo)
         if (index != -1) {
             habitNames[index] = novoNome
@@ -504,24 +480,19 @@ class habitos : AppCompatActivity() {
         }
     }
 
-    private fun atualizarAdapter() {
-        val hoje = getHoje()
-        val favoritedNames = getFavoritedHabits()
-        val listaDeHabitos = habitNames.map { nome ->
-            val chave = "${nome}_$hoje"
-            val contagem = habitDailyCounts[chave] ?: 0
-            val sequencia = habitStreakCounts[nome] ?: 0
-            val msg = gerarMensagemMotivacional(sequencia)
-            Habit(
-                id = nome,
-                name = nome,
-                streakDays = sequencia,
-                message = msg,
-                count = contagem,
-                isFavorited = favoritedNames.contains(nome)
-            )
-        }
-        habitsAdapter.submitList(listaDeHabitos)
+    private fun getBadHabitNames(): Set<String> {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet("bad_habits_list", emptySet()) ?: emptySet()
+    }
+
+    private fun getFavoritedHabits(): Set<String> {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet("favorited_habits", emptySet()) ?: emptySet()
+    }
+
+    private fun saveFavoritedHabits(favorites: Set<String>) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putStringSet("favorited_habits", favorites).apply()
     }
 
     private fun toggleFavoriteStatus(habit: Habit) {
@@ -541,14 +512,31 @@ class habitos : AppCompatActivity() {
         atualizarAdapter()
     }
 
-    private fun getFavoritedHabits(): Set<String> {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getStringSet("favorited_habits", emptySet()) ?: emptySet()
-    }
+    private fun atualizarAdapter() {
+        val hoje = getHoje()
+        val favoritedNames = getFavoritedHabits()
+        val badHabitNames = getBadHabitNames()
+        val habitosParaMostrar = if (mostrandoHabitosBons) {
+            habitNames.filterNot { badHabitNames.contains(it) }
+        } else {
+            habitNames.filter { badHabitNames.contains(it) }
+        }
 
-    private fun saveFavoritedHabits(favorites: Set<String>) {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putStringSet("favorited_habits", favorites).apply()
+        val listaDeHabitos = habitosParaMostrar.map { nome ->
+            val chave = "${nome}_$hoje"
+            val contagem = habitDailyCounts[chave] ?: 0
+            val sequencia = habitStreakCounts[nome] ?: 0
+            val msg = gerarMensagemMotivacional(sequencia)
+            Habit(
+                id = nome,
+                name = nome,
+                streakDays = sequencia,
+                message = msg,
+                count = contagem,
+                isFavorited = favoritedNames.contains(nome)
+            )
+        }
+        habitsAdapter.submitList(listaDeHabitos)
     }
 
     fun extrairEmoji(texto: String): String {

@@ -22,18 +22,29 @@
 
     <TextView
         android:id="@+id/habits_title"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Seus Hábitos"
+        tools:text="Seus Hábitos Bons"
         android:textColor="@color/white"
         android:textSize="20sp"
         android:textStyle="bold"
         android:layout_marginStart="32dp"
-        android:layout_marginEnd="16dp"
         android:layout_marginTop="32dp"
-        app:layout_constraintEnd_toStartOf="@+id/btn_delete_selected"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageButton
+        android:id="@+id/button_toggle_mode"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_switch"
+        app:tint="#DDFFFFFF"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Alternar modo"
+        app:layout_constraintStart_toEndOf="@id/habits_title"
+        app:layout_constraintTop_toTopOf="@id/habits_title"
+        app:layout_constraintBottom_toBottomOf="@id/habits_title"
+        android:layout_marginStart="8dp"/>
 
     <ImageButton
         android:id="@+id/btn_delete_selected"
