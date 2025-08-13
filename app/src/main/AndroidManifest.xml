@@ -20,6 +20,9 @@
         android:theme="@style/Theme.MyApplication"
         tools:targetApi="31">
         <activity
+            android:name=".Bemvindouser"
+            android:exported="false" />
+        <activity
             android:name=".RecuperarSenhaActivity"
             android:exported="false" />
         <activity
@@ -122,7 +125,7 @@
             android:name=".RegistroActivity"
             android:exported="false" />
         <activity
-            android:name=".Bemvindouser"
+            android:name=".SugestaoUser"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
