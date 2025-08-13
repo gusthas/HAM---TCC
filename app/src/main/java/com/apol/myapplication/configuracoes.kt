@@ -82,6 +82,10 @@ class configuracoes : AppCompatActivity() {
             exibirDialogoEditarPerfil()
         }
 
+        findViewById<LinearLayout>(R.id.opcao_calcular_imc).setOnClickListener {
+            startActivity(Intent(this, ImcActivity::class.java))
+        }
+
         findViewById<Button>(R.id.button_sair).setOnClickListener {
             val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
             prefs.edit().remove("LOGGED_IN_USER_EMAIL").apply()
