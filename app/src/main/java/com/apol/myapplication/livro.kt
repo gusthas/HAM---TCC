@@ -53,10 +53,23 @@ class livro : AppCompatActivity() {
         val btnavancar = findViewById<Button>(R.id.buttonavancarlivro)
         btnavancar.setOnClickListener{
             if (validarRespostas()) {
+
+                // --- LÓGICA DE SALVAMENTO ADICIONADA ---
+                val prefs = getSharedPreferences("user_onboarding_prefs", MODE_PRIVATE).edit()
+
+                // Regra: Mostrar dietas se o usuário NÃO segue uma, mas GOSTARIA de seguir.
+                val mostrarDietas = (respostaDieta == "Não" && respostaSeguir == "Sim")
+                prefs.putBoolean("mostrar_card_dietas", mostrarDietas)
+
+                // Livros sempre são mostrados, então salvamos como true
+                prefs.putBoolean("mostrar_card_livros", true)
+
+                prefs.apply() // Salva as preferências
+
                 val intent = Intent(this, saudemental::class.java)
                 startActivity(intent)
+                finish()
             } else {
-                // Exibe uma mensagem se alguma pergunta não foi respondida
                 Toast.makeText(this, "Por favor, responda todas as perguntas!", Toast.LENGTH_SHORT).show()
             }
         }

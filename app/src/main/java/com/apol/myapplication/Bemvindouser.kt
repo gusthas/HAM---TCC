@@ -116,7 +116,7 @@ class Bemvindouser : AppCompatActivity() {
             startActivity(Intent(this, CronometroActivity::class.java))
         }
         navBar.findViewById<LinearLayout>(R.id.botao_sugestoes).setOnClickListener {
-            Toast.makeText(this, "Tela de Sugestões em breve!", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, SugestaoUser::class.java))
         }
     }
 

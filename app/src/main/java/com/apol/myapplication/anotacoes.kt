@@ -82,8 +82,7 @@ class anotacoes : AppCompatActivity() {
             startActivity(Intent(this, CronometroActivity::class.java))
         }
         navBar.findViewById<LinearLayout>(R.id.botao_sugestoes).setOnClickListener {
-            startActivity(Intent(this, configuracoes::class.java))
-        }
+            startActivity(Intent(this, SugestaoUser::class.java))        }
         prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
 
         val abrirModoBlocos = intent.getBooleanExtra("modo_blocos_ativo", false)

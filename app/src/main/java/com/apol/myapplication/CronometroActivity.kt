@@ -205,7 +205,6 @@ class CronometroActivity : AppCompatActivity() {
             // Já está aqui
         }
         navBar.findViewById<LinearLayout>(R.id.botao_sugestoes).setOnClickListener {
-            startActivity(Intent(this, configuracoes::class.java))
-        }
+            startActivity(Intent(this, SugestaoUser::class.java))        }
     }
 }
