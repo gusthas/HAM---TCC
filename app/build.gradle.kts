@@ -47,6 +47,7 @@ android {
 }
 
 dependencies {
+    // Dependências Base do Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -54,31 +55,36 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.ui.test.android)
 
+    // Testes
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
+    // UI & Imagens
     implementation("androidx.cardview:cardview:1.0.0")
-    implementation("com.google.firebase:firebase-auth-ktx")
-
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-
-    // Serialização JSON kotlinx - mantenha versão compatível com Kotlin
+    // Serialização (versão do catálogo de versões)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${libs.versions.kotlinSerialization.get()}")
 
-    implementation("com.google.code.gson:gson:2.10.1")
-
-    implementation("com.google.firebase:firebase-auth:23.2.0")
-
-    // Room 2.6.1
+    // Room (Banco de Dados)
     implementation("androidx.room:room-runtime:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
 
-    // Firebase BOM para gerenciar versões Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
+    // --- Firebase (Configuração Corrigida e Limpa) ---
+    // A plataforma BOM gere TODAS as versões das bibliotecas Firebase abaixo
+    implementation(platform("com.google.firebase:firebase-bom:33.1.1"))
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // Módulos Firebase que você precisa (sem especificar a versão)
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    implementation("com.google.firebase:firebase-appcheck-ktx")
+    // A linha "firebase-ktx" é geralmente transitiva (incluída por outras),
+    // mas para garantir, podemos adicioná-la explicitamente.
+    implementation("com.google.firebase:firebase-common-ktx") // Usar firebase-common-ktx é a prática mais moderna
 }

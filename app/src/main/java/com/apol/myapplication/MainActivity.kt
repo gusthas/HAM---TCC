@@ -31,6 +31,12 @@ class MainActivity : AppCompatActivity() {
         val btnAdmin = findViewById<Button>(R.id.btn_admin_users)
         val tvEsqueceuSenha = findViewById<TextView>(R.id.textView5)
 
+        /* TESTE FIREBASE
+        val btnFirebaseTest = findViewById<Button>(R.id.btn_firebase_test)
+        btnFirebaseTest.setOnClickListener {
+            startActivity(Intent(this, FirebaseTestActivity::class.java))
+        }*/
+
 
 
         btnAdmin.setOnClickListener {

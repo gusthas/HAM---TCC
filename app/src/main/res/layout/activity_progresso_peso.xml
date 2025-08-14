@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/chatgpt_image_22_de_abr__de_2025_14_02_10"
+    tools:context=".ProgressoPeso">
+
+    <include
+        android:id="@+id/navigation_bar"
+        layout="@layout/navigation_bar"
+        android:layout_width="0dp"
+        android:layout_height="80dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ImageButton
+        android:id="@+id/btn_voltar_imc"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Voltar"
+        android:src="@drawable/ic_arrow_back"
+        app:tint="@android:color/white"
+        app:layout_constraintBottom_toBottomOf="@+id/progresso_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/progresso_title" />
+
+    <TextView
+        android:id="@+id/progresso_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="16dp"
+        android:gravity="center"
+        android:text="Meu Progresso Físico"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/btn_voltar_imc"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/progresso_title"
+        app:layout_constraintBottom_toTopOf="@id/navigation_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:id="@+id/card_resultado_imc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:background="@drawable/rounded_semi_transparent"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Seu IMC Atual"
+                    android:textColor="#CCCCCC"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/text_resultado_imc_numero"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/white"
+                    android:textSize="48sp"
+                    android:textStyle="bold"
+                    tools:text="23.1" />
+
+                <TextView
+                    android:id="@+id/text_resultado_imc_classificacao"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/white"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    tools:text="Peso Normal" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btn_add_weight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="+ Registrar Peso de Hoje"
+                android:layout_marginTop="16dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/rounded_semi_transparent"
+                android:padding="16dp"
+                android:layout_marginTop="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Evolução do Peso (kg)"
+                    android:textColor="@color/white"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="16dp"/>
+
+                <com.apol.myapplication.SimpleLineChart
+                    android:id="@+id/weight_chart"
+                    android:layout_width="match_parent"
+                    android:layout_height="250dp"/>
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,4 +1,3 @@
-// Substitua o conteúdo COMPLETO do seu arquivo AppDatabase.kt
 package com.apol.myapplication
 
 import android.content.Context
@@ -13,8 +12,9 @@ import com.apol.myapplication.data.model.LogEntry
 import com.apol.myapplication.data.model.TreinoEntity
 import com.apol.myapplication.data.model.TreinoNota
 import com.apol.myapplication.data.model.User
+import com.apol.myapplication.data.model.WeightEntry
 
-@Database(entities = [User::class, TreinoEntity::class, DivisaoTreino::class, TreinoNota::class], version = 9)
+@Database(entities = [User::class, TreinoEntity::class, DivisaoTreino::class, TreinoNota::class, WeightEntry::class], version = 10)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun userDao(): UserDao

@@ -20,6 +20,9 @@
         android:theme="@style/Theme.MyApplication"
         tools:targetApi="31">
         <activity
+            android:name=".ProgressoPeso"
+            android:exported="false" />
+        <activity
             android:name=".ImcActivity"
             android:exported="false" />
         <activity
@@ -82,12 +85,24 @@
                 android:resource="@xml/widget_blocos_info" />
         </receiver>
 
+        <activity android:name=".FirebaseTestActivity" />
+
+        <receiver
+            android:name=".HabitReminderReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.apol.myapplication.ACTION_TRIGGER_REMINDER_CHECK" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name=".configuracoes"
             android:exported="false" />
         <activity
             android:name=".CronometroActivity"
             android:exported="false" />
+
         <activity
             android:name=".treinos"
             android:exported="false" />

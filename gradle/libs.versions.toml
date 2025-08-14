@@ -10,7 +10,8 @@ material = "1.12.0"
 activity = "1.10.1"
 constraintlayout = "2.2.1"
 kotlinSerialization = "1.5.0"
-uiTestAndroid = "1.8.3"  # <--- Adiciona essa linha
+uiTestAndroid = "1.8.3"
+firebaseAppcheckPlayintegrity = "19.0.0"  # <--- Adiciona essa linha
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -22,7 +23,8 @@ material = { group = "com.google.android.material", name = "material", version.r
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinSerialization" }
-androidx-ui-test-android = { group = "androidx.compose.ui", name = "ui-test-android", version.ref = "uiTestAndroid" }  # <--- Adiciona essa linha
+androidx-ui-test-android = { group = "androidx.compose.ui", name = "ui-test-android", version.ref = "uiTestAndroid" }
+firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity", version.ref = "firebaseAppcheckPlayintegrity" }  # <--- Adiciona essa linha
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

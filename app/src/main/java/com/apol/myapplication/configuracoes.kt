@@ -78,12 +78,13 @@ class configuracoes : AppCompatActivity() {
             startActivityForResult(intent, PICK_IMAGE_REQUEST)
         }
 
+
         findViewById<LinearLayout>(R.id.bloco_titulo_perfil).setOnClickListener {
             exibirDialogoEditarPerfil()
         }
 
         findViewById<LinearLayout>(R.id.opcao_calcular_imc).setOnClickListener {
-            startActivity(Intent(this, ImcActivity::class.java))
+            startActivity(Intent(this, ProgressoPeso::class.java))
         }
 
         findViewById<Button>(R.id.button_sair).setOnClickListener {
