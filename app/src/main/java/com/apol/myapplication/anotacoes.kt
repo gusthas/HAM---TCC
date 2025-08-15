@@ -191,6 +191,12 @@ class anotacoes : AppCompatActivity() {
         verificarComandosDeEntrada()
     }
 
+    override fun onBackPressed() {
+        // Em vez de voltar para a tela anterior (comportamento padrão),
+        // esta função encerra o aplicativo por completo.
+        finishAffinity()
+    }
+
     private fun verificarComandosDeEntrada() {
         val deveAbrirDialogo = intent.getBooleanExtra("abrir_dialogo_novo_bloco", false)
         val blocoIdParaAbrir = intent.getStringExtra("abrir_bloco_id")

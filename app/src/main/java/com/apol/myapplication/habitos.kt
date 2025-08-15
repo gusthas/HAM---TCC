@@ -77,6 +77,8 @@ class habitos : AppCompatActivity() {
         }
     }
 
+
+
     override fun onResume() {
         super.onResume()
         atualizarTelaDeHabitos()
@@ -88,6 +90,7 @@ class habitos : AppCompatActivity() {
         } else {
             super.onBackPressed()
         }
+        finishAffinity()
     }
 
     private fun setupListeners() {

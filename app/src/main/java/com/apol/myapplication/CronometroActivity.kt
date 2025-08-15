@@ -63,6 +63,12 @@ class CronometroActivity : AppCompatActivity() {
         configurarNavBar()
     }
 
+    override fun onBackPressed() {
+        // Em vez de voltar para a tela anterior (comportamento padrão),
+        // esta função encerra o aplicativo por completo.
+        finishAffinity()
+    }
+
     private fun mostrarDialogoDefinirTempo() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_set_time, null)
         val pickerHours = dialogView.findViewById<NumberPicker>(R.id.picker_hours)

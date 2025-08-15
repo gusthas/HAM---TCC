@@ -59,7 +59,10 @@ class treinos : AppCompatActivity() {
         } else {
             super.onBackPressed()
         }
+        finishAffinity()
     }
+
+
 
     // --- CONFIGURAÇÕES (SETUP) ---
     private fun setupListeners() {

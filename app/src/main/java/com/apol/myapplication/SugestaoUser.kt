@@ -88,6 +88,12 @@ class SugestaoUser : AppCompatActivity() {
             exibirDialogoAdicionarSugestao()
         }
     }
+    override fun onBackPressed() {
+        // Em vez de voltar para a tela anterior (comportamento padrão),
+        // esta função encerra o aplicativo por completo.
+        finishAffinity()
+    }
+
     private fun atualizarVisibilidadeDosCards() {
 
         val prefs = getSharedPreferences("user_onboarding_prefs", MODE_PRIVATE)

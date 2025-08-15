@@ -46,6 +46,12 @@ class configuracoes : AppCompatActivity() {
         configurarBotoes()
     }
 
+    override fun onBackPressed() {
+        // Em vez de voltar para a tela anterior (comportamento padrão),
+        // esta função encerra o aplicativo por completo.
+        finishAffinity()
+    }
+
     override fun onResume() {
         super.onResume()
         // Recarrega os dados caso o usuário tenha editado o perfil e voltado

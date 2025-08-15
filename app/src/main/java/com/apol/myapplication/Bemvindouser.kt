@@ -39,6 +39,8 @@ class Bemvindouser : AppCompatActivity() {
             insets
         }
 
+
+
         viewModel = ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory.getInstance(application)).get(NotesViewModel::class.java)
         db = AppDatabase.getDatabase(this)
 
@@ -51,6 +53,11 @@ class Bemvindouser : AppCompatActivity() {
         configurarBotaoNovoBloco()
         carregarTop3Habitos()
         carregarTop3Blocos()
+    }
+    override fun onBackPressed() {
+        // Em vez de voltar para a tela anterior (comportamento padrão),
+        // esta função encerra o aplicativo por completo.
+        finishAffinity()
     }
 
     private fun configurarBotaoPerfil() {
