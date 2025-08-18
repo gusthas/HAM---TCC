@@ -1,9 +1,9 @@
-// Substitua o conteúdo COMPLETO do seu arquivo DivisaoDetalheActivity.kt
 package com.apol.myapplication
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
@@ -23,7 +23,7 @@ class DivisaoDetalheActivity : AppCompatActivity() {
     private lateinit var notaAdapter: TreinoNotaAdapter
     private val listaDeNotas = mutableListOf<TreinoNota>()
     private var divisaoId: Long = -1L
-    private var emailUsuarioLogado: String? = null // Para saber quem é o dono
+    private var emailUsuarioLogado: String? = null
 
     private var modoExclusaoAtivo = false
     private lateinit var btnApagarNotas: ImageButton
@@ -41,14 +41,12 @@ class DivisaoDetalheActivity : AppCompatActivity() {
         btnApagarNotas = findViewById(R.id.btn_apagar_notas)
         fabAddNota = findViewById(R.id.fab_add_exercicio)
 
-        // Pega o e-mail do usuário logado
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
 
         if (emailUsuarioLogado == null) {
             Toast.makeText(this, "Erro de sessão. Faça login novamente.", Toast.LENGTH_SHORT).show()
-            finish()
-            return
+            finish(); return
         }
 
         setupRecyclerView()
@@ -102,7 +100,6 @@ class DivisaoDetalheActivity : AppCompatActivity() {
     private fun carregarNotas() {
         emailUsuarioLogado?.let { email ->
             lifecycleScope.launch {
-                // Passa o e-mail para filtrar os resultados
                 val notasDoBanco = db.treinoDao().getNotasByDivisaoId(divisaoId, email)
                 runOnUiThread {
                     notaAdapter.submitList(notasDoBanco)
@@ -111,30 +108,40 @@ class DivisaoDetalheActivity : AppCompatActivity() {
         }
     }
 
+    // --- FUNÇÃO DE CRIAR NOTA CORRIGIDA ---
     private fun exibirDialogoCriarNota() {
         emailUsuarioLogado?.let { email ->
-            val editText = EditText(this).apply { hint = "Título (ex: KM corridos, Anotações...)" }
-            AlertDialog.Builder(this)
-                .setTitle("Nova Anotação de Treino")
-                .setView(editText)
-                .setPositiveButton("Criar") { _, _ ->
-                    val titulo = editText.text.toString().trim()
-                    if (titulo.isNotEmpty()) {
-                        lifecycleScope.launch {
-                            // CORREÇÃO: Passa o e-mail do dono ao criar a nota
-                            val novaNota = TreinoNota(userOwnerEmail = email, divisaoId = divisaoId, titulo = titulo)
-                            db.treinoDao().insertTreinoNota(novaNota)
-                            carregarNotas()
-                        }
+            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_nova_anotacao, null)
+            val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent)
+                .setView(dialogView)
+                .create()
+
+            val editText = dialogView.findViewById<EditText>(R.id.edit_text_new_note)
+            val btnCriar = dialogView.findViewById<Button>(R.id.btn_criar_new_note)
+            val btnCancelar = dialogView.findViewById<Button>(R.id.btn_cancelar_new_note)
+
+            btnCriar.setOnClickListener {
+                val titulo = editText.text.toString().trim()
+                if (titulo.isNotEmpty()) {
+                    lifecycleScope.launch {
+                        val novaNota = TreinoNota(userOwnerEmail = email, divisaoId = divisaoId, titulo = titulo)
+                        db.treinoDao().insertTreinoNota(novaNota)
+                        carregarNotas() // Recarrega a lista para mostrar a nova nota
                     }
+                    dialog.dismiss()
+                } else {
+                    Toast.makeText(this, "O título não pode ser vazio.", Toast.LENGTH_SHORT).show()
                 }
-                .setNegativeButton("Cancelar", null)
-                .show()
+            }
+
+            btnCancelar.setOnClickListener {
+                dialog.dismiss()
+            }
+
+            dialog.show()
         }
     }
 
-    // As funções abaixo (ativarModoExclusao, exibirDialogoEditarNota, etc.)
-    // já estão corretas e não precisam de mudança.
     private fun ativarModoExclusao(primeiraNota: TreinoNota) {
         modoExclusaoAtivo = true
         notaAdapter.modoExclusaoAtivo = true

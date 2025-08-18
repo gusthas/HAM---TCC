@@ -238,21 +238,33 @@ class TreinoDetalheActivity : AppCompatActivity() {
     }
 
     private fun exibirDialogoRenomearDivisao(divisao: DivisaoTreino) {
-        val editText = EditText(this).apply { setText(divisao.nome) }
-        AlertDialog.Builder(this)
-            .setTitle("Renomear Divisão")
-            .setView(editText)
-            .setPositiveButton("Salvar") { _, _ ->
-                val novoNome = editText.text.toString().trim()
-                if (novoNome.isNotEmpty()) {
-                    lifecycleScope.launch {
-                        divisao.nome = novoNome
-                        db.treinoDao().updateDivisao(divisao)
-                        carregarDivisoesDoBanco()
-                    }
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_renomear, null)
+        val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent)
+            .setView(dialogView)
+            .create()
+
+        val editText = dialogView.findViewById<EditText>(R.id.edit_text_rename)
+        val btnSalvar = dialogView.findViewById<Button>(R.id.btn_salvar_rename)
+        val btnCancelar = dialogView.findViewById<Button>(R.id.btn_cancelar_rename)
+
+        editText.setText(divisao.nome)
+
+        btnSalvar.setOnClickListener {
+            val novoNome = editText.text.toString().trim()
+            if (novoNome.isNotEmpty()) {
+                lifecycleScope.launch {
+                    divisao.nome = novoNome
+                    db.treinoDao().updateDivisao(divisao)
+                    carregarDivisoesDoBanco()
                 }
+                dialog.dismiss()
             }
-            .setNegativeButton("Cancelar", null)
-            .show()
+        }
+
+        btnCancelar.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 }
