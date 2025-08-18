@@ -13,26 +13,28 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_marginStart="16dp"
-        android:src="@drawable/ic_arrow_back"
         android:background="?attr/selectableItemBackgroundBorderless"
-        app:tint="@android:color/white"
+        android:contentDescription="Voltar"
+        android:src="@drawable/ic_arrow_back"
+        app:layout_constraintBottom_toBottomOf="@+id/nome_treino_detalhe"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/nome_treino_detalhe"
-        app:layout_constraintBottom_toBottomOf="@+id/nome_treino_detalhe"
-        android:contentDescription="Voltar"/>
+        app:tint="@android:color/white" />
 
     <TextView
         android:id="@+id/nome_treino_detalhe"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
         android:layout_marginTop="32dp"
+        android:gravity="center"
         android:textColor="@color/white"
         android:textSize="24sp"
         android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@+id/btn_apagar_divisoes"
+        app:layout_constraintStart_toEndOf="@+id/btn_voltar_detalhe"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:text="Academia" />
+        tools:text="Corpo Inteiro em Casa (Iniciante)" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewDivisoes"

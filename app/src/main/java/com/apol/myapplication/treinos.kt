@@ -3,6 +3,7 @@ package com.apol.myapplication
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -15,14 +16,18 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import com.apol.myapplication.data.model.DivisaoTreino
+import com.apol.myapplication.data.model.TipoDivisao
 import com.apol.myapplication.data.model.TipoTreino
 import com.apol.myapplication.data.model.TreinoEntity
+import com.apol.myapplication.data.model.TreinoNota
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 
 class treinos : AppCompatActivity() {
 
     // --- PROPRIEDADES ---
+    private val TAG = "SUGESTAO_DEBUG"
     private lateinit var recyclerViewTreinos: RecyclerView
     private lateinit var fabAddTreino: FloatingActionButton
     private lateinit var btnApagarTreinos: ImageButton
@@ -44,15 +49,11 @@ class treinos : AppCompatActivity() {
 
         db = AppDatabase.getDatabase(this)
 
-        // 1. Pega o e-mail do usuário logado no SharedPreferences
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
 
-        // Se por algum motivo não houver e-mail, encerra a tela para evitar erros
         if (emailUsuarioLogado == null) {
-            Toast.makeText(this, "Erro: Nenhum usuário logado.", Toast.LENGTH_SHORT).show()
-            finish()
-            return
+            finish(); return
         }
 
         // --- Inicialização das Views ---
@@ -65,6 +66,7 @@ class treinos : AppCompatActivity() {
         setupNavigationBar()
         setupRecyclerView()
         setupListeners()
+        verificarECriarTreinoSugerido()
     }
 
     override fun onResume() {
@@ -81,6 +83,83 @@ class treinos : AppCompatActivity() {
         }
     }
 
+    private fun criarTreino(nome: String, tipoTreino: TipoTreino, tipoDivisao: TipoDivisao) {
+        emailUsuarioLogado?.let { email ->
+            lifecycleScope.launch {
+                // Cria a entidade principal do treino
+                val novoTreino = TreinoEntity(
+                    userOwnerEmail = email, nome = nome,
+                    iconeResId = R.drawable.ic_treinos, // Um ícone genérico
+                    tipoDeTreino = tipoTreino, tipoDivisao = tipoDivisao
+                )
+                val treinoId = db.treinoDao().insertTreino(novoTreino)
+
+                // Pré-popula as divisões (ex: A, B, C ou os dias da semana)
+                if (tipoDivisao == TipoDivisao.LETRAS) {
+                    val letras = listOf("Treino A", "Treino B", "Treino C")
+                    letras.forEachIndexed { index, nomeDivisao ->
+                        db.treinoDao().insertDivisao(DivisaoTreino(userOwnerEmail = email, treinoId = treinoId, nome = nomeDivisao, ordem = index))
+                    }
+                } else if (tipoDivisao == TipoDivisao.DIAS_DA_SEMANA) {
+                    val dias = listOf("Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado")
+                    dias.forEachIndexed { index, nomeDia ->
+                        db.treinoDao().insertDivisao(DivisaoTreino(userOwnerEmail = email, treinoId = treinoId, nome = nomeDia, ordem = index))
+                    }
+                }
+
+                // Atualiza a lista na tela
+                carregarTreinos()
+            }
+        }
+    }
+
+    private fun verificarECriarTreinoSugerido() {
+        Log.d(TAG, "--- Iniciando verificação para criar treino sugerido ---")
+        val onboardingPrefs = getSharedPreferences("user_onboarding_prefs", MODE_PRIVATE)
+        val jaCriou = onboardingPrefs.getBoolean("sugestao_treino_criada", false)
+
+        Log.d(TAG, "Flag 'sugestao_treino_criada' é: $jaCriou")
+        if (jaCriou) {
+            Log.d(TAG, "Treino já foi criado anteriormente. Abortando.")
+            return
+        }
+
+        val praticaAtividade = onboardingPrefs.getString("resposta_pratica_atividade", "N/A")
+        val tempoDisponivel = onboardingPrefs.getString("resposta_tempo_disponivel", "N/A")
+        val espacos = onboardingPrefs.getStringSet("resposta_espacos", emptySet()) ?: emptySet()
+
+        Log.d(TAG, "Respostas lidas: Pratica? $praticaAtividade, Tempo? $tempoDisponivel, Espaços? $espacos")
+
+        // --- REGRAS DE DECISÃO ATUALIZADAS ---
+        val workoutSugerido = when {
+            espacos.contains("Academia") -> null
+
+            praticaAtividade == "Não" && tempoDisponivel == "Menos de 30 minutos" && espacos.contains("Parque") -> {
+                Log.d(TAG, "DECISÃO: Sugerir 'Pular Corda Iniciante'.")
+                WorkoutTemplateRepository.pularCordaIniciante
+            }
+
+            praticaAtividade == "Não" && espacos.contains("Casa") -> {
+                Log.d(TAG, "DECISÃO: Sugerir 'Corpo Inteiro em Casa (Iniciante)'.")
+                WorkoutTemplateRepository.corpoInteiroCasaIniciante
+            }
+
+            praticaAtividade == "Sim" && espacos.contains("Casa") -> {
+                Log.d(TAG, "DECISÃO: Sugerir 'Calistenia em Casa'.")
+                WorkoutTemplateRepository.calisteniaCasa
+            }
+
+            else -> null
+        }
+
+        workoutSugerido?.let {
+            Log.d(TAG, "Chamando a função para criar o treino '${it.nome}'.")
+            criarTreinoComConteudo(it)
+        } ?: Log.d(TAG, "Nenhuma regra correspondeu. Nenhum treino será criado.")
+
+        onboardingPrefs.edit().putBoolean("sugestao_treino_criada", true).apply()
+    }
+
     // --- CONFIGURAÇÕES (SETUP) ---
     private fun setupListeners() {
         fabAddTreino.setOnClickListener {
@@ -92,6 +171,38 @@ class treinos : AppCompatActivity() {
         }
         clickOutsideView.setOnClickListener {
             if (modoExclusaoAtivo) desativarModoExclusao()
+        }
+    }
+
+    private fun criarTreinoComConteudo(workout: PredefinedWorkout) {
+        emailUsuarioLogado?.let { email ->
+            lifecycleScope.launch {
+                val novoTreino = TreinoEntity(
+                    userOwnerEmail = email, nome = workout.nome,
+                    iconeResId = workout.iconeResId, tipoDeTreino = workout.tipoTreino,
+                    tipoDivisao = workout.tipoDivisao
+                )
+                val treinoId = db.treinoDao().insertTreino(novoTreino)
+
+                for (divisaoPredefinida in workout.divisions) {
+                    val novaDivisao = DivisaoTreino(
+                        userOwnerEmail = email, treinoId = treinoId,
+                        nome = divisaoPredefinida.nome, ordem = workout.divisions.indexOf(divisaoPredefinida)
+                    )
+                    val divisaoId = db.treinoDao().insertDivisao(novaDivisao)
+
+                    for (notaPredefinida in divisaoPredefinida.notas) {
+                        val novaNota = TreinoNota(
+                            userOwnerEmail = email, divisaoId = divisaoId,
+                            titulo = notaPredefinida.titulo, conteudo = notaPredefinida.conteudo
+                        )
+                        db.treinoDao().insertTreinoNota(novaNota)
+                    }
+                }
+
+                // Atualiza a lista na tela
+                carregarTreinos()
+            }
         }
     }
 

@@ -1,4 +1,3 @@
-// Substitua o conteúdo COMPLETO do seu arquivo pergunta01.kt
 package com.apol.myapplication
 
 import android.content.Intent
@@ -12,17 +11,10 @@ import androidx.appcompat.app.AppCompatActivity
 
 class pergunta01 : AppCompatActivity() {
 
-    // Variáveis para armazenar as respostas
-    private var praticaAtividade: String? = null
-    private var tempoDisponivel: String? = null
-    private var espacosDisponiveis = mutableListOf<String>()
-    // As preferências de atividade foram movidas para a tela seguinte (sujestao), então não precisamos delas aqui.
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pergunta01)
 
-        // --- Referências aos componentes do NOVO LAYOUT ---
         val radioGroupPraticaAtividade = findViewById<RadioGroup>(R.id.radioGroupPraticaAtividade)
         val radioGroupTempo = findViewById<RadioGroup>(R.id.radioGroupTempo)
         val checkCasa = findViewById<CheckBox>(R.id.checkBoxcasa)
@@ -30,61 +22,44 @@ class pergunta01 : AppCompatActivity() {
         val checkParque = findViewById<CheckBox>(R.id.checkBox3parque)
         val btnAvancar = findViewById<Button>(R.id.buttonavancaratividades)
 
-        // --- Lógica do botão de avançar ---
         btnAvancar.setOnClickListener {
-            // 1. Lê as respostas dos RadioGroups
-            val idPraticaSelecionado = radioGroupPraticaAtividade.checkedRadioButtonId
-            val idTempoSelecionado = radioGroupTempo.checkedRadioButtonId
+            val idPratica = radioGroupPraticaAtividade.checkedRadioButtonId
+            val idTempo = radioGroupTempo.checkedRadioButtonId
 
-            if (idPraticaSelecionado != -1) {
-                praticaAtividade = findViewById<RadioButton>(idPraticaSelecionado).text.toString()
-            }
-            if (idTempoSelecionado != -1) {
-                tempoDisponivel = findViewById<RadioButton>(idTempoSelecionado).text.toString()
+            // Valida se as perguntas de rádio foram respondidas
+            if (idPratica == -1 || idTempo == -1) {
+                Toast.makeText(this, "Por favor, responda todas as perguntas.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
 
-            // 2. Lê as respostas das CheckBoxes de espaço
-            espacosDisponiveis.clear()
-            if (checkCasa.isChecked) espacosDisponiveis.add("Casa")
-            if (checkAcademia.isChecked) espacosDisponiveis.add("Academia")
-            if (checkParque.isChecked) espacosDisponiveis.add("Parque / Área aberta")
-
-            // 3. Valida se tudo foi preenchido
-            if (validarCampos()) {
-                // Se tudo estiver OK, você pode salvar os dados aqui
-                // Exemplo:
-                // salvarRespostas(praticaAtividade, tempoDisponivel, espacosDisponiveis)
-
-                // E então navega para a próxima tela
-                startActivity(Intent(this, sujestao::class.java))
-                finish()
+            // Valida se pelo menos um espaço foi selecionado
+            if (!checkCasa.isChecked && !checkAcademia.isChecked && !checkParque.isChecked) {
+                Toast.makeText(this, "Selecione pelo menos um espaço disponível.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-            // A função validarCampos() já mostra os Toasts de erro
+
+            // --- SALVANDO AS RESPOSTAS ---
+            val prefs = getSharedPreferences("user_onboarding_prefs", MODE_PRIVATE).edit()
+
+            // Pega os textos das respostas
+            val praticaAtividade = findViewById<RadioButton>(idPratica).text.toString()
+            val tempoDisponivel = findViewById<RadioButton>(idTempo).text.toString()
+            val espacos = mutableSetOf<String>()
+            if (checkCasa.isChecked) espacos.add("Casa")
+            if (checkAcademia.isChecked) espacos.add("Academia")
+            if (checkParque.isChecked) espacos.add("Parque")
+
+            // Salva no SharedPreferences
+            prefs.putString("resposta_pratica_atividade", praticaAtividade)
+            prefs.putString("resposta_tempo_disponivel", tempoDisponivel)
+            prefs.putStringSet("resposta_espacos", espacos)
+            prefs.putBoolean("sugestao_treino_criada", false) // Flag para criar o treino apenas uma vez
+
+            prefs.apply()
+
+            // Navega para a próxima tela
+            startActivity(Intent(this, sujestao::class.java))
+            finish()
         }
     }
-
-    // Função de validação adaptada para os novos componentes
-    private fun validarCampos(): Boolean {
-        if (praticaAtividade == null) {
-            Toast.makeText(this, "Responda se pratica alguma atividade.", Toast.LENGTH_SHORT).show()
-            return false
-        }
-
-        if (tempoDisponivel == null) {
-            Toast.makeText(this, "Selecione o tempo disponível.", Toast.LENGTH_SHORT).show()
-            return false
-        }
-
-        if (espacosDisponiveis.isEmpty()) {
-            Toast.makeText(this, "Selecione pelo menos um espaço disponível.", Toast.LENGTH_SHORT).show()
-            return false
-        }
-
-        return true
-    }
-
-    // Futuramente, você pode implementar a função de salvamento
-    // private fun salvarRespostas(pratica: String?, tempo: String?, espacos: List<String>) {
-    //     // Lógica para salvar os dados em SharedPreferences ou no banco de dados (Room)
-    // }
 }
