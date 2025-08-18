@@ -22,8 +22,10 @@ interface TreinoDao {
     suspend fun deleteTreinosByIds(treinoIds: List<Long>)
 
     // --- Divisões ---
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDivisao(divisao: DivisaoTreino)
+    suspend fun insertDivisao(divisao: DivisaoTreino): Long
+
     @Query("SELECT * FROM divisoes_treino WHERE treinoId = :treinoId ORDER BY ordem ASC")
     suspend fun getDivisoesByTreinoId(treinoId: Long): List<DivisaoTreino>
     @Update
@@ -43,4 +45,6 @@ interface TreinoDao {
 
     @Query("SELECT * FROM treino_notas WHERE divisaoId = :divisaoId AND userOwnerEmail = :email")
     suspend fun getNotasByDivisaoId(divisaoId: Long, email: String): List<TreinoNota>
+
+
 }
