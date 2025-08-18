@@ -4,6 +4,12 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.Canvas
+import android.graphics.PixelFormat
+import android.graphics.ColorFilter
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -19,10 +25,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.apol.myapplication.AppDatabase
-import com.apol.myapplication.data.model.Habito
-import com.apol.myapplication.data.model.HabitUI
-import com.apol.myapplication.data.model.HabitoProgresso
+import com.apol.myapplication.data.model.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -34,10 +37,9 @@ class habitos : AppCompatActivity() {
     private lateinit var habitsAdapter: HabitsAdapter
     private var emailUsuarioLogado: String? = null
     private var mostrandoHabitosBons = true
-    private lateinit var habitsTitle: TextView
     private val allDays = setOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
 
-    // --- VARIÁVEIS PARA O MODO DE EXCLUSÃO ---
+    private lateinit var habitsTitle: TextView
     private var modoExclusaoAtivo = false
     private lateinit var btnDeleteSelected: ImageButton
     private lateinit var clickOutsideView: View
@@ -136,6 +138,39 @@ class habitos : AppCompatActivity() {
         }
     }
 
+    // --- FUNÇÃO CORRIGIDA ---
+    private fun mostrarOpcoesHabito(habit: HabitUI) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_opcoes_habito, null)
+        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        // CORREÇÃO: Busque os componentes a partir de 'dialogView', não de 'dialog'
+        val title = dialogView.findViewById<TextView>(R.id.dialog_options_title)
+        val btnProgresso = dialogView.findViewById<Button>(R.id.btn_ver_progresso)
+        val btnEditar = dialogView.findViewById<Button>(R.id.btn_editar_habito)
+
+        title.text = habit.name
+
+        btnProgresso.setOnClickListener {
+            val intent = Intent(this, activity_progresso_habito::class.java)
+            val habitId = habit.id.toLongOrNull()
+            if (habitId != null) {
+                intent.putExtra("habit_id", habitId)
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "Erro ao carregar o hábito.", Toast.LENGTH_SHORT).show()
+            }
+            dialog.dismiss()
+        }
+
+        btnEditar.setOnClickListener {
+            Toast.makeText(this, "Edição não implementada.", Toast.LENGTH_SHORT).show()
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
     private fun ativarModoExclusao(primeiroItem: HabitUI) {
         modoExclusaoAtivo = true
         habitsAdapter.modoExclusaoAtivo = true
@@ -193,7 +228,6 @@ class habitos : AppCompatActivity() {
                 val habitosFiltrados = habitosDoBanco.filter { it.isGoodHabit == mostrandoHabitosBons }
                 val hoje = getHojeString()
 
-                // Converte a lista de Habito (BD) para HabitUI (Tela)
                 val listaParaAdapter = habitosFiltrados.map { habitoDB ->
                     val progressos = db.habitoDao().getProgressoForHabito(habitoDB.id)
                     val concluidoHoje = progressos.any { it.data == hoje }
@@ -224,7 +258,6 @@ class habitos : AppCompatActivity() {
                     return@launch
                 }
 
-                // Cria uma instância de Habito (a entidade do banco de dados)
                 val novoHabito = Habito(
                     userOwnerEmail = email,
                     nome = nome,
@@ -258,38 +291,32 @@ class habitos : AppCompatActivity() {
                 val habitosDoBanco = db.habitoDao().getHabitosByUser(email)
                 val habitoDB = habitosDoBanco.find { it.id == habitoId }
 
-                habitoDB?.let {
-                    val totalFavoritos = habitosDoBanco.count { it.isFavorito && it.id != it.id }
-                    if (!it.isFavorito && totalFavoritos >= 3) {
-                        runOnUiThread { Toast.makeText(this@habitos, "Você pode favoritar no máximo 3 hábitos.", Toast.LENGTH_SHORT).show() }
-                        return@launch
+                habitoDB?.let { dbHabit ->
+                    if (dbHabit.isFavorito) {
+                        dbHabit.isFavorito = false
+                        db.habitoDao().updateHabito(dbHabit)
+                        runOnUiThread {
+                            Toast.makeText(this@habitos, "'${removerEmoji(dbHabit.nome)}' removido dos favoritos.", Toast.LENGTH_SHORT).show()
+                        }
                     }
-
-                    it.isFavorito = !it.isFavorito
-                    db.habitoDao().updateHabito(it)
+                    else {
+                        val totalFavoritos = habitosDoBanco.count { it.isFavorito }
+                        if (totalFavoritos >= 3) {
+                            runOnUiThread {
+                                Toast.makeText(this@habitos, "Você pode favoritar no máximo 3 hábitos.", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            dbHabit.isFavorito = true
+                            db.habitoDao().updateHabito(dbHabit)
+                            runOnUiThread {
+                                Toast.makeText(this@habitos, "'${removerEmoji(dbHabit.nome)}' adicionado aos favoritos.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                     carregarHabitosDoBanco()
                 }
             }
         }
-    }
-
-    private fun mostrarOpcoesHabito(habit: HabitUI) {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_opcoes_habito, null)
-        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        dialog.findViewById<TextView>(R.id.dialog_options_title)?.text = habit.name
-
-        dialog.findViewById<Button>(R.id.btn_ver_progresso)?.setOnClickListener {
-            val intent = Intent(this, activity_progresso_habito::class.java)
-            intent.putExtra("habit_name", habit.name)
-            startActivity(intent)
-            dialog.dismiss()
-        }
-        dialog.findViewById<Button>(R.id.btn_editar_habito)?.setOnClickListener {
-            Toast.makeText(this, "Edição não implementada.", Toast.LENGTH_SHORT).show()
-            dialog.dismiss()
-        }
-        dialog.show()
     }
 
     private fun mostrarDialogoNovoHabito() {
@@ -308,13 +335,13 @@ class habitos : AppCompatActivity() {
 
         btnAdicionar.setOnClickListener {
             val nome = etHabitName.text.toString().trim()
-            if (nome.isNotEmpty()) {
+            if (nome.isEmpty()) {
+                Toast.makeText(this, "O nome do hábito não pode ser vazio.", Toast.LENGTH_SHORT).show()
+            } else {
                 val selectedDays = toggles.filter { it.value.isChecked }.keys
                 val daysToSave = if (selectedDays.isEmpty()) allDays else selectedDays
                 adicionarHabito(nome, daysToSave)
                 dialog.dismiss()
-            } else {
-                Toast.makeText(this, "O nome do hábito não pode ser vazio.", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -323,6 +350,38 @@ class habitos : AppCompatActivity() {
         }
 
         dialog.show()
+    }
+
+    fun extrairEmoji(texto: String): String {
+        val regex = Regex("^\\p{So}")
+        return regex.find(texto)?.value ?: ""
+    }
+
+    fun removerEmoji(texto: String): String {
+        val regex = Regex("^\\p{So}\\s*")
+        return texto.replaceFirst(regex, "")
+    }
+
+    fun TextDrawable(context: Context, text: String): Drawable {
+        return object : Drawable() {
+            private val paint = Paint()
+            init {
+                paint.color = Color.WHITE
+                paint.textSize = 64f
+                paint.isAntiAlias = true
+                paint.textAlign = Paint.Align.CENTER
+                paint.typeface = Typeface.DEFAULT_BOLD
+            }
+            override fun draw(canvas: Canvas) {
+                val bounds = bounds
+                val x = bounds.centerX().toFloat()
+                val y = bounds.centerY() - (paint.descent() + paint.ascent()) / 2
+                canvas.drawText(text, x, y, paint)
+            }
+            override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+            override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+            override fun setColorFilter(colorFilter: ColorFilter?) { paint.colorFilter = colorFilter }
+        }
     }
 
     private fun getHojeString(): String = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
@@ -357,21 +416,20 @@ class habitos : AppCompatActivity() {
     }
 
     private fun configurarNavigationBar() {
-        val navBar = findViewById<LinearLayout>(R.id.navigation_bar)
-        navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {
+        findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {
             startActivity(Intent(this, Bemvindouser::class.java))
         }
-        navBar.findViewById<LinearLayout>(R.id.botao_anotacoes).setOnClickListener {
+        findViewById<LinearLayout>(R.id.botao_anotacoes).setOnClickListener {
             startActivity(Intent(this, anotacoes::class.java))
         }
-        navBar.findViewById<LinearLayout>(R.id.botao_habitos).setOnClickListener {}
-        navBar.findViewById<LinearLayout>(R.id.botao_treinos).setOnClickListener {
+        findViewById<LinearLayout>(R.id.botao_habitos).setOnClickListener {}
+        findViewById<LinearLayout>(R.id.botao_treinos).setOnClickListener {
             startActivity(Intent(this, treinos::class.java))
         }
-        navBar.findViewById<View>(R.id.botao_cronometro)?.setOnClickListener {
+        findViewById<View>(R.id.botao_cronometro)?.setOnClickListener {
             startActivity(Intent(this, CronometroActivity::class.java))
         }
-        navBar.findViewById<View>(R.id.botao_sugestoes)?.setOnClickListener {
+        findViewById<View>(R.id.botao_sugestoes)?.setOnClickListener {
             startActivity(Intent(this, SugestaoUser::class.java))
         }
     }

@@ -1,6 +1,5 @@
 package com.apol.myapplication
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
@@ -10,10 +9,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import com.apol.myapplication.AppDatabase
+import com.apol.myapplication.data.model.Habito
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 class saudemental : AppCompatActivity() {
+
+    // --- NOVO: Acesso ao Banco de Dados e Sessão ---
+    private lateinit var db: AppDatabase
+    private var emailUsuarioLogado: String? = null
 
     // "Dicionário" para transformar os hábitos ruins em metas positivas
     private val mapaDeHabitosRuins = mapOf(
@@ -35,6 +42,17 @@ class saudemental : AppCompatActivity() {
             insets
         }
 
+        // --- INICIALIZAÇÃO DO BANCO DE DADOS E SESSÃO ---
+        db = AppDatabase.getDatabase(this)
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
+
+        if (emailUsuarioLogado == null) {
+            Toast.makeText(this, "Erro de sessão, por favor, faça login novamente.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
         // Referências para as checkboxes
         val checkFumar = findViewById<CheckBox>(R.id.checkBoxfumar)
         val checkBeber = findViewById<CheckBox>(R.id.checkBox2beber)
@@ -51,7 +69,7 @@ class saudemental : AppCompatActivity() {
         val checkSemProblema = findViewById<CheckBox>(R.id.checkBoxSemProblema)
         val listaEmocional = listOf(checkAnsiedade, checkDepressao, checkEstresse, checkFaltaMotivacao)
 
-        // Lógica de interação
+        // Lógica de interação (sem alterações)
         checkNenhumHabito.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 listaHabitosChecks.forEach { it.isChecked = false; it.isEnabled = false }
@@ -78,7 +96,7 @@ class saudemental : AppCompatActivity() {
             }
         }
 
-        // Botão Avançar
+        // --- LÓGICA DO BOTÃO TOTALMENTE ATUALIZADA ---
         val btnAvancar = findViewById<Button>(R.id.buttonavancarsaudemental)
         btnAvancar.setOnClickListener {
             if (validarRespostas(listaHabitosChecks, checkNenhumHabito, listaEmocional, checkSemProblema)) {
@@ -88,13 +106,9 @@ class saudemental : AppCompatActivity() {
                     .filter { it.isChecked }
                     .map { it.text.toString() }
 
-                if (habitosMarcados.isNotEmpty()) {
-                    salvarHabitosSelecionados(habitosMarcados)
-                }
+                // Inicia o processo para salvar no banco de dados
+                salvarHabitosNoBanco(habitosMarcados)
 
-                val intent = Intent(this, pergunta01::class.java) // Navega para a próxima tela
-                startActivity(intent)
-                finish()
             } else {
                 Toast.makeText(this, "Por favor, selecione uma opção para cada pergunta!", Toast.LENGTH_SHORT).show()
             }
@@ -110,43 +124,31 @@ class saudemental : AppCompatActivity() {
         return pergunta1Respondida && pergunta2Respondida
     }
 
-    private fun salvarHabitosSelecionados(habitosSelecionados: List<String>) {
-        val prefs = getSharedPreferences("habitos_prefs", Context.MODE_PRIVATE)
-        val editor = prefs.edit()
+    // --- FUNÇÃO ATUALIZADA PARA SALVAR NO BANCO DE DADOS (ROOM) ---
+    private fun salvarHabitosNoBanco(habitosSelecionados: List<String>) {
+        lifecycleScope.launch {
+            val allDays = "SUN,MON,TUE,WED,THU,FRI,SAT"
+            val novasMetas = habitosSelecionados.mapNotNull { mapaDeHabitosRuins[it] }
 
-        // --- LÓGICA PRINCIPAL ---
-        // 1. Carrega a lista de hábitos que já existem
-        val habitsString = prefs.getString("habits_list_ordered", null)
-        val listaAtual = if (!habitsString.isNullOrEmpty()) habitsString.split(";;;").toMutableList() else mutableListOf()
+            novasMetas.forEach { meta ->
+                // Cria uma instância de Habito (a entidade do banco de dados)
+                val novoHabito = Habito(
+                    userOwnerEmail = emailUsuarioLogado!!,
+                    nome = meta,
+                    diasProgramados = allDays,
+                    isFavorito = false,
+                    isGoodHabit = false // Marcamos como um "hábito a mudar" (ruim)
+                )
+                // Insere o novo hábito no banco de dados
+                db.habitoDao().insertHabito(novoHabito)
+            }
 
-        // 2. Carrega a lista de hábitos RUINS que já existem
-        val badHabitsSet = prefs.getStringSet("bad_habits_list", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
-
-        // 3. Transforma os hábitos ruins selecionados em metas positivas
-        val novasMetas = habitosSelecionados.mapNotNull { mapaDeHabitosRuins[it] }
-
-        // 4. Adiciona as novas metas à lista principal e à lista de hábitos ruins
-        novasMetas.forEach { meta ->
-            if (!listaAtual.contains(meta)) {
-                listaAtual.add(meta) // Adiciona na lista principal
-                badHabitsSet.add(meta) // Adiciona na lista de hábitos ruins
+            // Após salvar, navega para a próxima tela
+            runOnUiThread {
+                val intent = Intent(this@saudemental, pergunta01::class.java)
+                startActivity(intent)
+                finish()
             }
         }
-
-        // 5. Salva as duas listas atualizadas
-        editor.putString("habits_list_ordered", listaAtual.joinToString(";;;"))
-        editor.putStringSet("bad_habits_list", badHabitsSet)
-
-        // 6. Salva a configuração de dias padrão para cada nova meta
-        val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-        val hojeFormatado = dateFormat.format(Date())
-        val allDays = setOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
-
-        novasMetas.forEach { nomeDaMeta ->
-            val chaveDias = "${nomeDaMeta}_scheduled_days_$hojeFormatado"
-            editor.putStringSet(chaveDias, allDays)
-        }
-
-        editor.apply()
     }
 }

@@ -1,40 +1,41 @@
 package com.apol.myapplication
 
-import android.content.Context
 import android.os.Bundle
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.activity.enableEdgeToEdge
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import com.apol.myapplication.AppDatabase
+import com.apol.myapplication.data.model.Habito
+import com.apol.myapplication.data.model.HabitoProgresso
 import com.google.android.material.chip.ChipGroup
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 class activity_progresso_habito : AppCompatActivity() {
 
+    // --- MUDANÇA: Acesso ao Banco de Dados ---
+    private lateinit var db: AppDatabase
+    private var habitId: Long = -1L
+    private var habitoAtual: Habito? = null
+    private var listaDeProgresso: List<HabitoProgresso> = emptyList()
+
     private lateinit var tvDiasSeguidos: TextView
     private lateinit var simpleLineChart: SimpleLineChart
-
     private lateinit var tvConstanciaGeral: TextView
     private lateinit var tvConstanciaLabel: TextView
-
     private lateinit var chipGroupFilters: ChipGroup
-
-    private val PREFS_NAME = "habitos_prefs"
-    private lateinit var habitName: String
 
     private val DIAS_SEMANA = 7
     private val DIAS_MES = 30
     private val DIAS_ANO = 365
 
-    private val scheduleCache = mutableMapOf<String, Set<String>>()
-    private val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_progresso_habito)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -43,9 +44,15 @@ class activity_progresso_habito : AppCompatActivity() {
             insets
         }
 
-        habitName = intent.getStringExtra("habit_name") ?: "Hábito"
-        findViewById<TextView>(R.id.title_progresso).text = habitName
+        db = AppDatabase.getDatabase(this)
+        // --- MUDANÇA: Recebendo o ID do hábito em vez do nome ---
+        habitId = intent.getLongExtra("habit_id", -1L)
 
+        if (habitId == -1L) {
+            Toast.makeText(this, "Não foi possível carregar o hábito.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
 
         tvDiasSeguidos = findViewById(R.id.tv_dias_seguidos)
         simpleLineChart = findViewById(R.id.simpleLineChart)
@@ -54,93 +61,61 @@ class activity_progresso_habito : AppCompatActivity() {
         chipGroupFilters = findViewById(R.id.chip_group_filters)
         findViewById<ImageView>(R.id.btn_back).setOnClickListener { finish() }
 
-        atualizarDiasSeguidos()
+        // Carrega os dados do banco e depois atualiza a tela
+        carregarDadosDoBanco()
 
-
-        chipGroupFilters.setOnCheckedChangeListener { group, checkedId ->
+        chipGroupFilters.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
                 R.id.chip_semana -> atualizarGraficoEConstancia(DIAS_SEMANA, "Semana")
                 R.id.chip_mes -> atualizarGraficoEConstancia(DIAS_MES, "Mês")
                 R.id.chip_ano -> atualizarGraficoEConstancia(DIAS_ANO, "Ano")
             }
         }
+    }
 
+    private fun carregarDadosDoBanco() {
+        lifecycleScope.launch {
+            habitoAtual = db.habitoDao().getHabitoById(habitId)
+            listaDeProgresso = db.habitoDao().getProgressoForHabito(habitId)
 
-        atualizarGraficoEConstancia(DIAS_MES, "Mês")
+            runOnUiThread {
+                if (habitoAtual != null) {
+                    findViewById<TextView>(R.id.title_progresso).text = habitoAtual!!.nome
+                    atualizarDiasSeguidos()
+                    // Define o Mês como filtro inicial
+                    chipGroupFilters.check(R.id.chip_mes)
+                    atualizarGraficoEConstancia(DIAS_MES, "Mês")
+                } else {
+                    Toast.makeText(this@activity_progresso_habito, "Hábito não encontrado.", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+        }
     }
 
     private fun atualizarGraficoEConstancia(diasParaTras: Int, periodoLabel: String) {
-        val (dados, legendas) = carregarDadosDoHabito(habitName, diasParaTras)
-        simpleLineChart.setData(dados, legendas)
+        habitoAtual?.let { habito ->
+            val (dados, legendas) = gerarDadosDoGrafico(habito, listaDeProgresso, diasParaTras)
+            simpleLineChart.setData(dados, legendas)
 
-        val constancia = calcularConstancia(habitName, diasParaTras)
-        tvConstanciaGeral.text = "$constancia%"
-        tvConstanciaLabel.text = "Constância ($periodoLabel)"
+            val constancia = calcularConstancia(habito, listaDeProgresso, diasParaTras)
+            tvConstanciaGeral.text = "$constancia%"
+            tvConstanciaLabel.text = "Constância ($periodoLabel)"
+        }
     }
 
-    private fun getScheduleForDate(habitName: String, targetDate: Calendar): Set<String> {
-        val targetDateString = dateFormat.format(targetDate.time)
-        if (scheduleCache.containsKey(targetDateString)) {
-            return scheduleCache[targetDateString]!!
-        }
-
-        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        val allKeys = prefs.all.keys
-        val allDays = setOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
-
-        val scheduleKeys = allKeys
-            .filter { it.startsWith("${habitName}_scheduled_days") }
-            .mapNotNull { key ->
-                val dateStr = key.substringAfterLast('_')
-                try {
-                    dateFormat.parse(dateStr)
-                    dateStr to key
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            .sortedBy { it.first }
-
-        var correctKey: String? = null
-        for ((dateStr, key) in scheduleKeys) {
-            if (dateStr <= targetDateString) {
-                correctKey = key
-            } else {
-                break
-            }
-        }
-
-        val result = if (correctKey != null) {
-            prefs.getStringSet(correctKey, allDays) ?: allDays
-        } else {
-            prefs.getStringSet("${habitName}_scheduled_days", allDays) ?: allDays
-        }
-
-        scheduleCache[targetDateString] = result
-        return result
-    }
-
-    private fun calcularConstancia(habitName: String, diasParaTras: Int): Int {
-        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+    private fun calcularConstancia(habito: Habito, progresso: List<HabitoProgresso>, diasParaTras: Int): Int {
+        val datasConcluidas = progresso.map { it.data }.toSet()
+        val diasProgramados = habito.diasProgramados.split(',').toSet()
         var diasFeitos = 0
         var diasProgramadosConsiderados = 0
-        val hoje = Calendar.getInstance()
-        scheduleCache.clear()
 
         for (i in 0 until diasParaTras) {
             val dia = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -i) }
-            val scheduledDays = getScheduleForDate(habitName, dia)
-            val diaDaSemana = getDayOfWeekString(dia)
-
-            val hojeSemHoras = (Calendar.getInstance().clone() as Calendar).apply{ clear(Calendar.HOUR); clear(Calendar.MINUTE); clear(Calendar.SECOND) }
-            val diaSemHoras = (dia.clone() as Calendar).apply{ clear(Calendar.HOUR); clear(Calendar.MINUTE); clear(Calendar.SECOND) }
-
-            if (!diaSemHoras.after(hojeSemHoras) && scheduledDays.contains(diaDaSemana)) {
+            if (diasProgramados.contains(getDayOfWeekString(dia))) {
                 diasProgramadosConsiderados++
-                val dataFormatada = sdf.format(dia.time)
-                val chave = "${habitName}_$dataFormatada"
-                if (prefs.getInt(chave, 0) > 0) {
+                val dataFormatada = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(dia.time)
+                if (datasConcluidas.contains(dataFormatada)) {
                     diasFeitos++
                 }
             }
@@ -149,12 +124,13 @@ class activity_progresso_habito : AppCompatActivity() {
         return (diasFeitos * 100) / diasProgramadosConsiderados
     }
 
-    private fun carregarDadosDoHabito(habitName: String, diasParaTras: Int): Pair<List<Int>, List<String>> {
-        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+    private fun gerarDadosDoGrafico(habito: Habito, progresso: List<HabitoProgresso>, diasParaTras: Int): Pair<List<Int>, List<String>> {
+        val datasConcluidas = progresso.map { it.data }.toSet()
+        val diasProgramados = habito.diasProgramados.split(',').toSet()
+
         val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
         val labelFormat = SimpleDateFormat("dd/MM", Locale.getDefault())
-        val hoje = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0) }
-        scheduleCache.clear()
+        val hoje = Calendar.getInstance()
 
         val pontos = mutableListOf<Int>()
         val legendas = mutableListOf<String>()
@@ -162,16 +138,13 @@ class activity_progresso_habito : AppCompatActivity() {
 
         for (i in (diasParaTras - 1) downTo 0) {
             val diaDoLoop = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -i) }
-            val scheduledDays = getScheduleForDate(habitName, diaDoLoop)
-            val diaSemHoras = (diaDoLoop.clone() as Calendar).apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0) }
             val diaDaSemana = getDayOfWeekString(diaDoLoop)
 
-            if (scheduledDays.contains(diaDaSemana)) {
+            if (diasProgramados.contains(diaDaSemana)) {
                 val dataFormatada = sdf.format(diaDoLoop.time)
-                val chave = "${habitName}_$dataFormatada"
-                if (prefs.getInt(chave, 0) > 0) {
+                if (datasConcluidas.contains(dataFormatada)) {
                     saldo++
-                } else if (diaSemHoras.before(hoje)) {
+                } else if (diaDoLoop.before(hoje)) {
                     saldo--
                 }
             }
@@ -196,13 +169,23 @@ class activity_progresso_habito : AppCompatActivity() {
         }
     }
 
-    private fun calcularSequenciaAtual(habitName: String): Int {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getInt("${habitName}_streak", 0)
+    private fun atualizarDiasSeguidos() {
+        val sequencia = calcularSequenciaAtual(listaDeProgresso)
+        tvDiasSeguidos.text = "$sequencia dias"
     }
 
-    private fun atualizarDiasSeguidos() {
-        val diasAtuaisSeguidos = calcularSequenciaAtual(habitName)
-        tvDiasSeguidos.text = "$diasAtuaisSeguidos dias"
+    private fun calcularSequenciaAtual(progresso: List<HabitoProgresso>): Int {
+        if (progresso.isEmpty()) return 0
+        val datasConcluidas = progresso.map { it.data }.toSet()
+        val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+        var sequencia = 0
+        val calendar = Calendar.getInstance()
+
+        // Verifica hoje e os dias anteriores em sequência
+        while (datasConcluidas.contains(sdf.format(calendar.time))) {
+            sequencia++
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+        }
+        return sequencia
     }
 }

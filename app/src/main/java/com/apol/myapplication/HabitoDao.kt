@@ -28,4 +28,11 @@ interface HabitoDao {
 
     @Query("DELETE FROM habito_progresso WHERE habitoId = :habitoId AND data = :data")
     suspend fun deleteProgresso(habitoId: Long, data: String)
+
+    @Query("SELECT * FROM habitos WHERE userOwnerEmail = :email AND isFavorito = 1 LIMIT 3")
+    suspend fun getFavoritedHabitsByUser(email: String): List<Habito>
+
+    // Em HabitoDao.kt
+    @Query("SELECT * FROM habitos WHERE id = :habitoId")
+    suspend fun getHabitoById(habitoId: Long): Habito?
 }

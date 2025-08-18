@@ -8,10 +8,9 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
-import com.apol.myapplication.data.model.HabitUI // MUDANÇA IMPORTANTE AQUI
+import com.apol.myapplication.data.model.HabitUI
 
 class HabitsAdapter(
-    // Funções agora recebem o modelo de UI: HabitUI
     private val onItemClick: (HabitUI) -> Unit,
     private val onItemLongClick: (HabitUI) -> Unit,
     private val onMarkDone: (HabitUI) -> Unit,
@@ -22,12 +21,12 @@ class HabitsAdapter(
     private var habitList: MutableList<HabitUI> = mutableListOf()
     var modoExclusaoAtivo: Boolean = false
 
+    // ... (as outras funções do adapter não mudam) ...
     fun submitList(novaLista: List<HabitUI>) {
         habitList.clear()
         habitList.addAll(novaLista)
         notifyDataSetChanged()
     }
-
     fun toggleSelecao(habit: HabitUI) {
         val habitNaLista = habitList.find { it.id == habit.id }
         habitNaLista?.let {
@@ -35,13 +34,12 @@ class HabitsAdapter(
             notifyItemChanged(habitList.indexOf(it))
         }
     }
-
     fun getSelecionados(): List<HabitUI> = habitList.filter { it.isSelected }
-
     fun limparSelecao() {
         habitList.forEach { it.isSelected = false }
         notifyDataSetChanged()
     }
+    // ...
 
     class HabitViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val icone: ImageView = itemView.findViewById(R.id.icone_habito)
@@ -62,10 +60,25 @@ class HabitsAdapter(
         val habit = habitList[position]
         val context = holder.itemView.context
 
-        holder.nome.text = habit.name
+        // --- LÓGICA DO EMOJI ATUALIZADA ---
+        val nomeCompleto = habit.name
+        // A Activity 'habitos' precisa ter as funções 'extrairEmoji' e 'removerEmoji'
+        val emoji = (context as? habitos)?.extrairEmoji(nomeCompleto) ?: ""
+        val nomeSemEmoji = (context as? habitos)?.removerEmoji(nomeCompleto) ?: nomeCompleto
+
+        holder.nome.text = nomeSemEmoji
+
+        if (emoji.isNotEmpty() && context is habitos) {
+            // Usa a função 'TextDrawable' da activity para desenhar o emoji
+            holder.icone.setImageDrawable(context.TextDrawable(context, emoji))
+        } else {
+            // Fallback: caso não encontre um emoji, mostra um ícone padrão
+            holder.icone.setImageResource(R.drawable.ic_habits)
+        }
+        // --- FIM DA LÓGICA DO EMOJI ---
+
         holder.streakDays.text = "${habit.streakDays} dias seguidos"
         holder.message.text = habit.message
-        holder.icone.setImageResource(R.drawable.ic_habits)
 
         if (habit.count > 0) {
             holder.btnCheck.visibility = View.GONE
@@ -76,17 +89,14 @@ class HabitsAdapter(
         }
 
         holder.btnFavorite.setImageResource(
-            if (habit.isFavorited) R.drawable.ic_star_filled else R.drawable.ic_star_outline
+            if (habit.isFavorited) R.drawable.ic_star_outline else R.drawable.ic_star_filled
         )
 
         val background = if (habit.isSelected) R.drawable.bg_selected_item else R.drawable.rounded_semi_transparent
         holder.itemView.background = ContextCompat.getDrawable(context, background)
 
         holder.itemView.setOnClickListener { onItemClick(habit) }
-        holder.itemView.setOnLongClickListener {
-            onItemLongClick(habit)
-            true
-        }
+        holder.itemView.setOnLongClickListener { onItemLongClick(habit); true }
         holder.btnFavorite.setOnClickListener { onToggleFavorite(habit) }
         holder.btnCheck.setOnClickListener { onMarkDone(habit) }
         holder.btnCheckDone.setOnClickListener { onUndoDone(habit) }
