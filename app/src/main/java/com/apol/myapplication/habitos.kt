@@ -1,3 +1,4 @@
+// Substitua o conteúdo COMPLETO do seu arquivo habitos.kt
 package com.apol.myapplication
 
 import android.content.Context
@@ -35,6 +36,9 @@ class habitos : AppCompatActivity() {
     private lateinit var habitsTitle: TextView
     private val allDays = setOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
 
+    // A lista que o adapter vai usar para exibir na tela
+    private val listaDeHabitosDisplay = mutableListOf<Habit>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_habitos)
@@ -63,7 +67,7 @@ class habitos : AppCompatActivity() {
 
     private fun atualizarTelaDeHabitos() {
         habitsTitle.text = if (mostrandoHabitosBons) "Seus Hábitos Bons" else "Hábitos a Mudar"
-        findViewById<ImageButton>(R.id.button_toggle_mode).setImageResource(
+        findViewById<ImageButton>(R.id.button_toggle_mode)?.setImageResource(
             if(mostrandoHabitosBons) R.drawable.ic_good_habit else R.drawable.ic_bad_habit
         )
         carregarHabitosDoBanco()
@@ -71,8 +75,9 @@ class habitos : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewHabits)
+        // CORREÇÃO: Passando a lista de hábitos para o adapter
         habitsAdapter = HabitsAdapter(
-            mutableListOf(),
+            listaDeHabitosDisplay, // Passa a lista aqui
             onItemClick = { habit -> mostrarOpcoesHabito(habit) },
             onMarkDone = { habito -> marcarHabito(habito, true) },
             onUndoDone = { habito -> marcarHabito(habito, false) },
@@ -86,7 +91,7 @@ class habitos : AppCompatActivity() {
         findViewById<FloatingActionButton>(R.id.fab_add_habit).setOnClickListener {
             mostrarDialogoNovoHabito()
         }
-        findViewById<ImageButton>(R.id.button_toggle_mode).setOnClickListener {
+        findViewById<ImageButton>(R.id.button_toggle_mode)?.setOnClickListener {
             mostrandoHabitosBons = !mostrandoHabitosBons
             atualizarTelaDeHabitos()
         }
@@ -96,13 +101,12 @@ class habitos : AppCompatActivity() {
         emailUsuarioLogado?.let { email ->
             lifecycleScope.launch {
                 val habitosDoBanco = db.habitoDao().getHabitosByUser(email)
-
-                // FILTRA A LISTA ANTES DE EXIBIR
                 val habitosFiltrados = habitosDoBanco.filter { it.isGoodHabit == mostrandoHabitosBons }
+                val hoje = getHojeString()
 
                 val listaParaAdapter = habitosFiltrados.map { habitoDB ->
                     val progressos = db.habitoDao().getProgressoForHabito(habitoDB.id)
-                    val concluidoHoje = progressos.any { it.data == getHojeString() }
+                    val concluidoHoje = progressos.any { it.data == hoje }
                     val sequencia = calcularSequencia(progressos)
                     Habit(
                         id = habitoDB.id.toString(), name = habitoDB.nome,
@@ -131,7 +135,7 @@ class habitos : AppCompatActivity() {
                     userOwnerEmail = email, nome = nome,
                     diasProgramados = diasProgramados.joinToString(","),
                     isFavorito = false,
-                    isGoodHabit = mostrandoHabitosBons // Salva o tipo correto
+                    isGoodHabit = mostrandoHabitosBons
                 )
                 db.habitoDao().insertHabito(novoHabito)
                 carregarHabitosDoBanco()
@@ -205,10 +209,7 @@ class habitos : AppCompatActivity() {
 
     private fun mostrarDialogoNovoHabito() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_novo_habito, null)
-        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
-
-        // ESTA É A LINHA QUE EU TINHA ESQUECIDO. ELA RESOLVE O PROBLEMA.
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent).setView(dialogView).create()
 
         val etHabitName = dialogView.findViewById<EditText>(R.id.et_habit_name)
         val btnAdicionar = dialogView.findViewById<Button>(R.id.btn_adicionar_habito)
@@ -219,18 +220,24 @@ class habitos : AppCompatActivity() {
             "THU" to dialogView.findViewById<ToggleButton>(R.id.toggle_qui), "FRI" to dialogView.findViewById<ToggleButton>(R.id.toggle_sex),
             "SAT" to dialogView.findViewById<ToggleButton>(R.id.toggle_sab)
         )
-        AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setPositiveButton("Adicionar") { _, _ ->
-                val nome = etHabitName.text.toString().trim()
-                if (nome.isNotEmpty()) {
-                    val selectedDays = toggles.filter { it.value.isChecked }.keys
-                    val daysToSave = if (selectedDays.isEmpty()) allDays else selectedDays
-                    adicionarHabito(nome, daysToSave)
-                }
+
+        btnAdicionar.setOnClickListener {
+            val nome = etHabitName.text.toString().trim()
+            if (nome.isNotEmpty()) {
+                val selectedDays = toggles.filter { it.value.isChecked }.keys
+                val daysToSave = if (selectedDays.isEmpty()) allDays else selectedDays
+                adicionarHabito(nome, daysToSave)
+                dialog.dismiss()
+            } else {
+                Toast.makeText(this, "O nome do hábito não pode ser vazio.", Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("Cancelar", null)
-            .show()
+        }
+
+        btnCancelar.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun getHojeString(): String = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
