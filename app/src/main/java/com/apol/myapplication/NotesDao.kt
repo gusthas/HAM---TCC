@@ -32,4 +32,10 @@ interface NotesDao {
 
     @Query("SELECT * FROM blocos WHERE userOwnerEmail = :email")
     fun getBlocosByUser(email: String): Flow<List<Bloco>>
+
+    @Query("SELECT * FROM notes WHERE userOwnerEmail = :email ORDER BY lastModified DESC")
+    suspend fun getNotesByUserNow(email: String): List<Note>
+
+    @Query("SELECT * FROM blocos WHERE userOwnerEmail = :email")
+    suspend fun getBlocosByUserNow(email: String): List<Bloco>
 }

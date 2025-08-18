@@ -23,21 +23,28 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
 
     private var currentUserEmail: String? = null
 
-    // Esta função define o usuário e dispara o carregamento inicial
     fun setCurrentUser(email: String) {
+        if (currentUserEmail == email) return // Evita recarregar desnecessariamente
         currentUserEmail = email
-        loadNotes()
-        loadBlocos()
+
+        // Inicia a "escuta" do banco de dados
+        viewModelScope.launch {
+            notesDao.getNotesByUser(email).collect { notesFromDb ->
+                _notes.value = notesFromDb
+            }
+        }
+        viewModelScope.launch {
+            notesDao.getBlocosByUser(email).collect { blocosFromDb ->
+                _blocos.value = blocosFromDb
+            }
+        }
     }
 
-    // --- FUNÇÕES CORRIGIDAS ---
     private fun loadNotes() {
         currentUserEmail?.let { email ->
             viewModelScope.launch {
-                // "Escuta" o fluxo de dados e atualiza a lista sempre que houver mudanças
-                notesDao.getNotesByUser(email).collect { notesFromDb ->
-                    _notes.value = notesFromDb
-                }
+                // Apenas busca os dados mais recentes do banco
+                _notes.value = notesDao.getNotesByUserNow(email)
             }
         }
     }
@@ -45,30 +52,27 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadBlocos() {
         currentUserEmail?.let { email ->
             viewModelScope.launch {
-                // "Escuta" o fluxo de dados e atualiza a lista sempre que houver mudanças
-                notesDao.getBlocosByUser(email).collect { blocosFromDb ->
-                    _blocos.value = blocosFromDb
-                }
+                // Apenas busca os dados mais recentes do banco
+                _blocos.value = notesDao.getBlocosByUserNow(email)
             }
         }
     }
 
-    // As funções abaixo agora não precisam mais chamar 'loadNotes' ou 'loadBlocos',
-    // pois o Flow já faz a atualização automática.
+    // --- FUNÇÕES DE MODIFICAÇÃO CORRIGIDAS ---
+    // Agora, após cada modificação, chamamos a função de recarregar para forçar a atualização.
+
     fun addNote(text: String) {
         currentUserEmail?.let { email ->
             viewModelScope.launch {
-                val newNote = Note(userOwnerEmail = email, text = text)
-                notesDao.insertNote(newNote)
+                notesDao.insertNote(Note(userOwnerEmail = email, text = text))
             }
         }
     }
 
     fun adicionarBloco(bloco: Bloco) {
         currentUserEmail?.let { email ->
-            val blocoComDono = bloco.copy(userOwnerEmail = email)
             viewModelScope.launch {
-                notesDao.insertBloco(blocoComDono)
+                notesDao.insertBloco(bloco.copy(userOwnerEmail = email))
             }
         }
     }
@@ -76,24 +80,28 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     fun updateNote(note: Note) {
         viewModelScope.launch {
             notesDao.updateNote(note)
+            loadNotes() // Força a atualização
         }
     }
 
     fun updateBloco(bloco: Bloco) {
         viewModelScope.launch {
             notesDao.updateBloco(bloco)
+            loadBlocos() // Força a atualização
         }
     }
 
     fun deleteNotes(notesToDelete: List<Note>) {
         viewModelScope.launch {
             notesDao.deleteNotes(notesToDelete)
+            loadNotes() // Força a atualização
         }
     }
 
     fun deleteBlocos(blocosToDelete: List<Bloco>) {
         viewModelScope.launch {
             notesDao.deleteBlocos(blocosToDelete)
+            loadBlocos() // Força a atualização
         }
     }
 }

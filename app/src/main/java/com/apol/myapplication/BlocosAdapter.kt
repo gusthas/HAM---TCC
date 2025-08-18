@@ -24,7 +24,7 @@ class BlocosAdapter(
 
     fun limparSelecao() {
         blocos.forEach { it.isSelected = false }
-        modoExclusaoAtivo = false
+        modoExclusaoAtivo = false // Garante que o modo de exclusão seja desativado
         notifyDataSetChanged()
     }
 
@@ -42,7 +42,10 @@ class BlocosAdapter(
     override fun getItemCount(): Int = blocos.size
 
     inner class BlocoViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        // Supondo que seu item_bloco.xml tenha um TextView com id 'texto_bloco'
+        // e um container com id 'item_bloco_container'
         private val texto = itemView.findViewById<TextView>(R.id.texto_bloco)
+        private val container = itemView.findViewById<View>(R.id.item_bloco_container)
 
         fun bind(bloco: Bloco) {
             texto.text = if (bloco.subtitulo.isNotEmpty()) {
@@ -51,9 +54,8 @@ class BlocosAdapter(
                 bloco.nome
             }
 
-
-            val background = if (bloco.isSelected) R.drawable.bg_selected_note else R.drawable.rounded_semi_transparent
-            itemView.background = ContextCompat.getDrawable(itemView.context, background)
+            val background = if (bloco.isSelected) R.drawable.bg_selected_item else R.drawable.rounded_semi_transparent
+            container.background = ContextCompat.getDrawable(itemView.context, background)
 
             itemView.setOnClickListener {
                 if (modoExclusaoAtivo) {
@@ -67,15 +69,10 @@ class BlocosAdapter(
 
             itemView.setOnLongClickListener {
                 if (!modoExclusaoAtivo) {
-                    modoExclusaoAtivo = true
-                    bloco.isSelected = true
-                    notifyItemChanged(adapterPosition)
-                    onItemLongClick(bloco)
+                    onItemLongClick(bloco) // A Activity vai ativar o modo de exclusão
                 }
                 true
             }
         }
     }
 }
-
-
