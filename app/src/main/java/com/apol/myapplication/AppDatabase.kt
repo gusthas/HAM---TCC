@@ -17,7 +17,8 @@ import com.apol.myapplication.data.model.*
     Habito::class,
     HabitoProgresso::class,
     Note::class,
-    Bloco::class
+    Bloco::class,
+    HabitoAgendamento::class,
 ], version = 13, exportSchema = false) // Aumentamos a versão para aplicar a última mudança
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

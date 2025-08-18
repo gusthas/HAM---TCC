@@ -12,17 +12,16 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.apol.myapplication.AppDatabase
 import com.apol.myapplication.data.model.Habito
+import com.apol.myapplication.data.model.HabitoAgendamento
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 class saudemental : AppCompatActivity() {
 
-    // --- NOVO: Acesso ao Banco de Dados e Sessão ---
     private lateinit var db: AppDatabase
     private var emailUsuarioLogado: String? = null
 
-    // "Dicionário" para transformar os hábitos ruins em metas positivas
     private val mapaDeHabitosRuins = mapOf(
         "Fumar" to "🚭 Fumar Menos",
         "Beber" to "🚱 Não Beber",
@@ -42,7 +41,6 @@ class saudemental : AppCompatActivity() {
             insets
         }
 
-        // --- INICIALIZAÇÃO DO BANCO DE DADOS E SESSÃO ---
         db = AppDatabase.getDatabase(this)
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
@@ -53,7 +51,6 @@ class saudemental : AppCompatActivity() {
             return
         }
 
-        // Referências para as checkboxes
         val checkFumar = findViewById<CheckBox>(R.id.checkBoxfumar)
         val checkBeber = findViewById<CheckBox>(R.id.checkBox2beber)
         val checkSonoRuim = findViewById<CheckBox>(R.id.checkBox3sonoruim)
@@ -69,7 +66,6 @@ class saudemental : AppCompatActivity() {
         val checkSemProblema = findViewById<CheckBox>(R.id.checkBoxSemProblema)
         val listaEmocional = listOf(checkAnsiedade, checkDepressao, checkEstresse, checkFaltaMotivacao)
 
-        // Lógica de interação (sem alterações)
         checkNenhumHabito.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 listaHabitosChecks.forEach { it.isChecked = false; it.isEnabled = false }
@@ -96,17 +92,14 @@ class saudemental : AppCompatActivity() {
             }
         }
 
-        // --- LÓGICA DO BOTÃO TOTALMENTE ATUALIZADA ---
         val btnAvancar = findViewById<Button>(R.id.buttonavancarsaudemental)
         btnAvancar.setOnClickListener {
             if (validarRespostas(listaHabitosChecks, checkNenhumHabito, listaEmocional, checkSemProblema)) {
 
-                // Pega os hábitos marcados
                 val habitosMarcados = listaHabitosChecks
                     .filter { it.isChecked }
                     .map { it.text.toString() }
 
-                // Inicia o processo para salvar no banco de dados
                 salvarHabitosNoBanco(habitosMarcados)
 
             } else {
@@ -124,23 +117,31 @@ class saudemental : AppCompatActivity() {
         return pergunta1Respondida && pergunta2Respondida
     }
 
-    // --- FUNÇÃO ATUALIZADA PARA SALVAR NO BANCO DE DADOS (ROOM) ---
+    // --- FUNÇÃO CORRIGIDA PARA SEGUIR A NOVA LÓGICA DO BANCO ---
     private fun salvarHabitosNoBanco(habitosSelecionados: List<String>) {
         lifecycleScope.launch {
             val allDays = "SUN,MON,TUE,WED,THU,FRI,SAT"
+            val hojeFormatado = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
             val novasMetas = habitosSelecionados.mapNotNull { mapaDeHabitosRuins[it] }
 
             novasMetas.forEach { meta ->
-                // Cria uma instância de Habito (a entidade do banco de dados)
+                // 1. Cria o hábito (sem os dias)
                 val novoHabito = Habito(
                     userOwnerEmail = emailUsuarioLogado!!,
                     nome = meta,
-                    diasProgramados = allDays,
                     isFavorito = false,
-                    isGoodHabit = false // Marcamos como um "hábito a mudar" (ruim)
+                    isGoodHabit = false
                 )
-                // Insere o novo hábito no banco de dados
-                db.habitoDao().insertHabito(novoHabito)
+                // Insere o hábito e pega o ID que foi gerado
+                val novoId = db.habitoDao().insertHabitoComRetornoDeId(novoHabito)
+
+                // 2. Cria o primeiro agendamento para este hábito
+                val primeiroAgendamento = HabitoAgendamento(
+                    habitoId = novoId,
+                    diasProgramados = allDays,
+                    dataDeInicio = hojeFormatado
+                )
+                db.habitoDao().insertAgendamento(primeiroAgendamento)
             }
 
             // Após salvar, navega para a próxima tela

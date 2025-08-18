@@ -8,8 +8,7 @@ data class Habito(
     @PrimaryKey(autoGenerate = true)
     var id: Long = 0,
     val userOwnerEmail: String,
-    val nome: String,
-    val diasProgramados: String,
+    var nome: String,
     var isFavorito: Boolean = false,
     val isGoodHabit: Boolean
 )

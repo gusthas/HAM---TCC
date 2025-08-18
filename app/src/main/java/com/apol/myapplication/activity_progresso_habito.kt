@@ -1,6 +1,7 @@
 package com.apol.myapplication
 
 import android.os.Bundle
+import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -10,6 +11,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.apol.myapplication.AppDatabase
 import com.apol.myapplication.data.model.Habito
+import com.apol.myapplication.data.model.HabitoAgendamento
 import com.apol.myapplication.data.model.HabitoProgresso
 import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.launch
@@ -18,11 +20,11 @@ import java.util.*
 
 class activity_progresso_habito : AppCompatActivity() {
 
-    // --- MUDANÇA: Acesso ao Banco de Dados ---
     private lateinit var db: AppDatabase
     private var habitId: Long = -1L
     private var habitoAtual: Habito? = null
     private var listaDeProgresso: List<HabitoProgresso> = emptyList()
+    private var listaDeAgendamentos: List<HabitoAgendamento> = emptyList()
 
     private lateinit var tvDiasSeguidos: TextView
     private lateinit var simpleLineChart: SimpleLineChart
@@ -45,7 +47,6 @@ class activity_progresso_habito : AppCompatActivity() {
         }
 
         db = AppDatabase.getDatabase(this)
-        // --- MUDANÇA: Recebendo o ID do hábito em vez do nome ---
         habitId = intent.getLongExtra("habit_id", -1L)
 
         if (habitId == -1L) {
@@ -61,9 +62,6 @@ class activity_progresso_habito : AppCompatActivity() {
         chipGroupFilters = findViewById(R.id.chip_group_filters)
         findViewById<ImageView>(R.id.btn_back).setOnClickListener { finish() }
 
-        // Carrega os dados do banco e depois atualiza a tela
-        carregarDadosDoBanco()
-
         chipGroupFilters.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
                 R.id.chip_semana -> atualizarGraficoEConstancia(DIAS_SEMANA, "Semana")
@@ -73,18 +71,27 @@ class activity_progresso_habito : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        carregarDadosDoBanco()
+    }
+
     private fun carregarDadosDoBanco() {
         lifecycleScope.launch {
             habitoAtual = db.habitoDao().getHabitoById(habitId)
             listaDeProgresso = db.habitoDao().getProgressoForHabito(habitId)
+            listaDeAgendamentos = db.habitoDao().getAgendamentosParaHabito(habitId)
 
             runOnUiThread {
-                if (habitoAtual != null) {
+                if (habitoAtual != null && listaDeAgendamentos.isNotEmpty()) {
                     findViewById<TextView>(R.id.title_progresso).text = habitoAtual!!.nome
                     atualizarDiasSeguidos()
-                    // Define o Mês como filtro inicial
-                    chipGroupFilters.check(R.id.chip_mes)
-                    atualizarGraficoEConstancia(DIAS_MES, "Mês")
+                    if (chipGroupFilters.checkedChipId == View.NO_ID) {
+                        chipGroupFilters.check(R.id.chip_mes)
+                    } else {
+                        val checkedId = chipGroupFilters.checkedChipId
+                        atualizarGraficoEConstanciaPeloId(checkedId)
+                    }
                 } else {
                     Toast.makeText(this@activity_progresso_habito, "Hábito não encontrado.", Toast.LENGTH_SHORT).show()
                     finish()
@@ -93,30 +100,47 @@ class activity_progresso_habito : AppCompatActivity() {
         }
     }
 
-    private fun atualizarGraficoEConstancia(diasParaTras: Int, periodoLabel: String) {
-        habitoAtual?.let { habito ->
-            val (dados, legendas) = gerarDadosDoGrafico(habito, listaDeProgresso, diasParaTras)
-            simpleLineChart.setData(dados, legendas)
-
-            val constancia = calcularConstancia(habito, listaDeProgresso, diasParaTras)
-            tvConstanciaGeral.text = "$constancia%"
-            tvConstanciaLabel.text = "Constância ($periodoLabel)"
+    private fun atualizarGraficoEConstanciaPeloId(checkedId: Int) {
+        when (checkedId) {
+            R.id.chip_semana -> atualizarGraficoEConstancia(DIAS_SEMANA, "Semana")
+            R.id.chip_mes -> atualizarGraficoEConstancia(DIAS_MES, "Mês")
+            R.id.chip_ano -> atualizarGraficoEConstancia(DIAS_ANO, "Ano")
         }
     }
 
-    private fun calcularConstancia(habito: Habito, progresso: List<HabitoProgresso>, diasParaTras: Int): Int {
+    private fun atualizarGraficoEConstancia(diasParaTras: Int, periodoLabel: String) {
+        val (dados, legendas) = gerarDadosDoGrafico(listaDeProgresso, diasParaTras)
+        simpleLineChart.setData(dados, legendas)
+
+        val constancia = calcularConstancia(listaDeProgresso, diasParaTras)
+        tvConstanciaGeral.text = "$constancia%"
+        tvConstanciaLabel.text = "Constância ($periodoLabel)"
+    }
+
+    private fun getAgendamentoParaData(data: Calendar, agendamentos: List<HabitoAgendamento>): Set<String> {
+        val dataFormatada = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(data.time)
+        val agendamentoCorreto = agendamentos.find { it.dataDeInicio <= dataFormatada }
+        return agendamentoCorreto?.diasProgramados?.split(',')?.toSet() ?: emptySet()
+    }
+
+    private fun calcularConstancia(progresso: List<HabitoProgresso>, diasParaTras: Int): Int {
         val datasConcluidas = progresso.map { it.data }.toSet()
-        val diasProgramados = habito.diasProgramados.split(',').toSet()
         var diasFeitos = 0
         var diasProgramadosConsiderados = 0
+        val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+        val hojeStr = sdf.format(Date())
 
         for (i in 0 until diasParaTras) {
             val dia = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -i) }
-            if (diasProgramados.contains(getDayOfWeekString(dia))) {
-                diasProgramadosConsiderados++
-                val dataFormatada = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(dia.time)
-                if (datasConcluidas.contains(dataFormatada)) {
-                    diasFeitos++
+            val dataFormatada = sdf.format(dia.time)
+
+            if (dataFormatada <= hojeStr) {
+                val diasProgramadosNesteDia = getAgendamentoParaData(dia, listaDeAgendamentos)
+                if (diasProgramadosNesteDia.contains(getDayOfWeekString(dia))) {
+                    diasProgramadosConsiderados++
+                    if (datasConcluidas.contains(dataFormatada)) {
+                        diasFeitos++
+                    }
                 }
             }
         }
@@ -124,13 +148,11 @@ class activity_progresso_habito : AppCompatActivity() {
         return (diasFeitos * 100) / diasProgramadosConsiderados
     }
 
-    private fun gerarDadosDoGrafico(habito: Habito, progresso: List<HabitoProgresso>, diasParaTras: Int): Pair<List<Int>, List<String>> {
+    private fun gerarDadosDoGrafico(progresso: List<HabitoProgresso>, diasParaTras: Int): Pair<List<Int>, List<String>> {
         val datasConcluidas = progresso.map { it.data }.toSet()
-        val diasProgramados = habito.diasProgramados.split(',').toSet()
-
         val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
         val labelFormat = SimpleDateFormat("dd/MM", Locale.getDefault())
-        val hoje = Calendar.getInstance()
+        val hojeStr = sdf.format(Date())
 
         val pontos = mutableListOf<Int>()
         val legendas = mutableListOf<String>()
@@ -139,12 +161,14 @@ class activity_progresso_habito : AppCompatActivity() {
         for (i in (diasParaTras - 1) downTo 0) {
             val diaDoLoop = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -i) }
             val diaDaSemana = getDayOfWeekString(diaDoLoop)
+            val dataFormatada = sdf.format(diaDoLoop.time)
 
-            if (diasProgramados.contains(diaDaSemana)) {
-                val dataFormatada = sdf.format(diaDoLoop.time)
+            val diasProgramadosNesteDia = getAgendamentoParaData(diaDoLoop, listaDeAgendamentos)
+
+            if (diasProgramadosNesteDia.contains(diaDaSemana)) {
                 if (datasConcluidas.contains(dataFormatada)) {
                     saldo++
-                } else if (diaDoLoop.before(hoje)) {
+                } else if (dataFormatada < hojeStr) {
                     saldo--
                 }
             }
@@ -181,7 +205,6 @@ class activity_progresso_habito : AppCompatActivity() {
         var sequencia = 0
         val calendar = Calendar.getInstance()
 
-        // Verifica hoje e os dias anteriores em sequência
         while (datasConcluidas.contains(sdf.format(calendar.time))) {
             sequencia++
             calendar.add(Calendar.DAY_OF_YEAR, -1)
