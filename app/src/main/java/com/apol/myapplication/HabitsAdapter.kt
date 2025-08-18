@@ -94,9 +94,9 @@ class HabitsAdapter(
         }
 
         if (habit.isFavorited) {
-            holder.btnFavorite.setImageResource(R.drawable.ic_star_filled)
-        } else {
             holder.btnFavorite.setImageResource(R.drawable.ic_star_outline)
+        } else {
+            holder.btnFavorite.setImageResource(R.drawable.ic_star_filled)
         }
 
         holder.itemView.setOnClickListener { onItemClick(habit) }
