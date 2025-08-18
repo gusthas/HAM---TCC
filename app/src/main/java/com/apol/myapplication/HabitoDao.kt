@@ -32,7 +32,14 @@ interface HabitoDao {
     @Query("SELECT * FROM habitos WHERE userOwnerEmail = :email AND isFavorito = 1 LIMIT 3")
     suspend fun getFavoritedHabitsByUser(email: String): List<Habito>
 
-    // Em HabitoDao.kt
+
     @Query("SELECT * FROM habitos WHERE id = :habitoId")
     suspend fun getHabitoById(habitoId: Long): Habito?
+    @Insert
+    suspend fun insertAgendamento(agendamento: HabitoAgendamento)
+
+    @Query("SELECT * FROM habito_agendamentos WHERE habitoId = :habitoId ORDER BY dataDeInicio DESC")
+    suspend fun getAgendamentosParaHabito(habitoId: Long): List<HabitoAgendamento>
+    @Insert
+    suspend fun insertHabitoComRetornoDeId(habito: Habito): Long
 }

@@ -2,14 +2,9 @@ package com.apol.myapplication
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
+import android.graphics.*
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
-import android.graphics.Paint
-import android.graphics.Typeface
-import android.graphics.Canvas
-import android.graphics.PixelFormat
-import android.graphics.ColorFilter
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -138,18 +133,16 @@ class habitos : AppCompatActivity() {
         }
     }
 
-    // --- FUNÇÃO CORRIGIDA ---
     private fun mostrarOpcoesHabito(habit: HabitUI) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_opcoes_habito, null)
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-        // CORREÇÃO: Busque os componentes a partir de 'dialogView', não de 'dialog'
         val title = dialogView.findViewById<TextView>(R.id.dialog_options_title)
         val btnProgresso = dialogView.findViewById<Button>(R.id.btn_ver_progresso)
         val btnEditar = dialogView.findViewById<Button>(R.id.btn_editar_habito)
 
-        title.text = habit.name
+        title.text = removerEmoji(habit.name)
 
         btnProgresso.setOnClickListener {
             val intent = Intent(this, activity_progresso_habito::class.java)
@@ -164,7 +157,77 @@ class habitos : AppCompatActivity() {
         }
 
         btnEditar.setOnClickListener {
-            Toast.makeText(this, "Edição não implementada.", Toast.LENGTH_SHORT).show()
+            mostrarDialogoEditarHabito(habit)
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun mostrarDialogoEditarHabito(habit: HabitUI) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_novo_habito, null)
+        val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent).setView(dialogView).create()
+
+        val title = dialogView.findViewById<TextView>(R.id.dialog_title)
+        val etHabitName = dialogView.findViewById<EditText>(R.id.et_habit_name)
+        val btnSalvar = dialogView.findViewById<Button>(R.id.btn_adicionar_habito)
+        val toggles = mapOf(
+            "SUN" to dialogView.findViewById<ToggleButton>(R.id.toggle_dom), "MON" to dialogView.findViewById<ToggleButton>(R.id.toggle_seg),
+            "TUE" to dialogView.findViewById<ToggleButton>(R.id.toggle_ter), "WED" to dialogView.findViewById<ToggleButton>(R.id.toggle_qua),
+            "THU" to dialogView.findViewById<ToggleButton>(R.id.toggle_qui), "FRI" to dialogView.findViewById<ToggleButton>(R.id.toggle_sex),
+            "SAT" to dialogView.findViewById<ToggleButton>(R.id.toggle_sab)
+        )
+
+        title.text = "Editar Hábito"
+        btnSalvar.text = "Salvar"
+        etHabitName.setText(habit.name)
+
+        lifecycleScope.launch {
+            val habitId = habit.id.toLongOrNull() ?: return@launch
+            val agendamentos = db.habitoDao().getAgendamentosParaHabito(habitId)
+            val agendamentoAtual = agendamentos.firstOrNull()
+            val diasAtuais = agendamentoAtual?.diasProgramados?.split(',') ?: emptyList()
+
+            runOnUiThread {
+                toggles.forEach { (dia, toggle) ->
+                    toggle.isChecked = diasAtuais.contains(dia)
+                }
+            }
+        }
+
+        btnSalvar.setOnClickListener {
+            val novoNome = etHabitName.text.toString().trim()
+            if (novoNome.isEmpty()) {
+                Toast.makeText(this, "O nome não pode ser vazio.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val novosDias = toggles.filter { it.value.isChecked }.keys
+            val diasParaSalvar = if (novosDias.isEmpty()) allDays else novosDias
+
+            lifecycleScope.launch {
+                val habitId = habit.id.toLongOrNull() ?: return@launch
+                val habitoDB = db.habitoDao().getHabitoById(habitId) ?: return@launch
+
+                habitoDB.nome = novoNome
+                db.habitoDao().updateHabito(habitoDB)
+
+                val novoAgendamento = HabitoAgendamento(
+                    habitoId = habitId,
+                    diasProgramados = diasParaSalvar.joinToString(","),
+                    dataDeInicio = getHojeString()
+                )
+                db.habitoDao().insertAgendamento(novoAgendamento)
+
+                runOnUiThread {
+                    Toast.makeText(this@habitos, "Hábito atualizado!", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                    carregarHabitosDoBanco()
+                }
+            }
+        }
+
+        dialogView.findViewById<Button>(R.id.btn_cancelar_habito).setOnClickListener {
             dialog.dismiss()
         }
 
@@ -253,7 +316,7 @@ class habitos : AppCompatActivity() {
         emailUsuarioLogado?.let { email ->
             lifecycleScope.launch {
                 val habitosExistentes = db.habitoDao().getHabitosByUser(email)
-                if (habitosExistentes.any { it.nome.equals(nome, ignoreCase = true) }) {
+                if (habitosExistentes.any { removerEmoji(it.nome).equals(removerEmoji(nome), ignoreCase = true) }) {
                     runOnUiThread { Toast.makeText(this@habitos, "Hábito '$nome' já existe.", Toast.LENGTH_SHORT).show() }
                     return@launch
                 }
@@ -261,11 +324,18 @@ class habitos : AppCompatActivity() {
                 val novoHabito = Habito(
                     userOwnerEmail = email,
                     nome = nome,
-                    diasProgramados = diasProgramados.joinToString(","),
                     isFavorito = false,
                     isGoodHabit = mostrandoHabitosBons
                 )
-                db.habitoDao().insertHabito(novoHabito)
+                val novoId = db.habitoDao().insertHabitoComRetornoDeId(novoHabito)
+
+                val primeiroAgendamento = HabitoAgendamento(
+                    habitoId = novoId,
+                    diasProgramados = diasProgramados.joinToString(","),
+                    dataDeInicio = getHojeString()
+                )
+                db.habitoDao().insertAgendamento(primeiroAgendamento)
+
                 carregarHabitosDoBanco()
             }
         }
