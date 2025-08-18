@@ -35,17 +35,16 @@
 
     <ImageButton
         android:id="@+id/button_toggle_mode"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:src="@drawable/ic_switch"
-        app:tint="#DDFFFFFF"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_width="27dp"
+        android:layout_height="29dp"
+        android:layout_marginStart="16dp"
+        android:background="@drawable/circle_button_bg"
         android:contentDescription="Alternar modo"
-        app:layout_constraintStart_toEndOf="@id/habits_title"
-        app:layout_constraintTop_toTopOf="@id/habits_title"
-        app:layout_constraintBottom_toBottomOf="@id/habits_title"
-        android:layout_marginStart="8dp"/>
-
+        android:src="@drawable/ic_switch"
+        android:tint="#DDFFFFFF"
+        app:layout_constraintBottom_toBottomOf="@+id/habits_title"
+        app:layout_constraintStart_toEndOf="@+id/habits_title"
+        app:layout_constraintTop_toTopOf="@+id/habits_title" />
     <ImageButton
         android:id="@+id/btn_delete_selected"
         android:layout_width="48dp"
@@ -105,6 +104,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:tint="@android:color/white"
         app:backgroundTint="#5D3B8B" />
+
 
     <include
         android:id="@+id/navigation_bar"

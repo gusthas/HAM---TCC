@@ -1,4 +1,3 @@
-// Substitua o conteúdo COMPLETO do seu arquivo habitos.kt
 package com.apol.myapplication
 
 import android.content.Context
@@ -36,7 +35,6 @@ class habitos : AppCompatActivity() {
     private lateinit var habitsTitle: TextView
     private val allDays = setOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
 
-    // A lista que o adapter vai usar para exibir na tela
     private val listaDeHabitosDisplay = mutableListOf<Habit>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,18 +64,19 @@ class habitos : AppCompatActivity() {
     }
 
     private fun atualizarTelaDeHabitos() {
-        habitsTitle.text = if (mostrandoHabitosBons) "Seus Hábitos Bons" else "Hábitos a Mudar"
-        findViewById<ImageButton>(R.id.button_toggle_mode)?.setImageResource(
-            if(mostrandoHabitosBons) R.drawable.ic_good_habit else R.drawable.ic_bad_habit
-        )
+        habitsTitle.text = if (mostrandoHabitosBons) "Seus Hábitos Bons" else "Seus Hábitos Ruins"
+
+        // Esta linha define o ícone. O fundo e a forma vêm do XML.
+        findViewById<ImageButton>(R.id.button_toggle_mode)?.setImageResource(R.drawable.ic_refresh)
+
         carregarHabitosDoBanco()
     }
 
+    // ... (O resto do seu código continua o mesmo de antes)
     private fun setupRecyclerView() {
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewHabits)
-        // CORREÇÃO: Passando a lista de hábitos para o adapter
         habitsAdapter = HabitsAdapter(
-            listaDeHabitosDisplay, // Passa a lista aqui
+            listaDeHabitosDisplay,
             onItemClick = { habit -> mostrarOpcoesHabito(habit) },
             onMarkDone = { habito -> marcarHabito(habito, true) },
             onUndoDone = { habito -> marcarHabito(habito, false) },
