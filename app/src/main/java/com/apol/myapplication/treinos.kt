@@ -114,48 +114,43 @@ class treinos : AppCompatActivity() {
     }
 
     private fun verificarECriarTreinoSugerido() {
-        Log.d(TAG, "--- Iniciando verificação para criar treino sugerido ---")
         val onboardingPrefs = getSharedPreferences("user_onboarding_prefs", MODE_PRIVATE)
         val jaCriou = onboardingPrefs.getBoolean("sugestao_treino_criada", false)
+        if (jaCriou) return
 
-        Log.d(TAG, "Flag 'sugestao_treino_criada' é: $jaCriou")
-        if (jaCriou) {
-            Log.d(TAG, "Treino já foi criado anteriormente. Abortando.")
-            return
-        }
-
-        val praticaAtividade = onboardingPrefs.getString("resposta_pratica_atividade", "N/A")
-        val tempoDisponivel = onboardingPrefs.getString("resposta_tempo_disponivel", "N/A")
+        val praticaAtividade = onboardingPrefs.getString("resposta_pratica_atividade", "")
+        val tempoDisponivel = onboardingPrefs.getString("resposta_tempo_disponivel", "")
         val espacos = onboardingPrefs.getStringSet("resposta_espacos", emptySet()) ?: emptySet()
 
-        Log.d(TAG, "Respostas lidas: Pratica? $praticaAtividade, Tempo? $tempoDisponivel, Espaços? $espacos")
-
-        // --- REGRAS DE DECISÃO ATUALIZADAS ---
+        // --- MOTOR DE SUGESTÕES COM REGRAS COMBINADAS ---
         val workoutSugerido = when {
+            // Regra 1: Academia é sempre prioridade, não sugere nada para deixar o usuário livre.
             espacos.contains("Academia") -> null
 
-            praticaAtividade == "Não" && tempoDisponivel == "Menos de 30 minutos" && espacos.contains("Parque") -> {
-                Log.d(TAG, "DECISÃO: Sugerir 'Pular Corda Iniciante'.")
+            // --- Cenários para quem JÁ PRATICA ATIVIDADE ---
+            praticaAtividade == "Sim" && tempoDisponivel == "Menos de 30 minutos" && espacos.contains("Casa") ->
+                WorkoutTemplateRepository.hiitCasa
+
+            praticaAtividade == "Sim" && tempoDisponivel == "Mais de 1 hora" && espacos.contains("Parque") ->
+                WorkoutTemplateRepository.hibridoParque
+
+            praticaAtividade == "Sim" && espacos.contains("Casa") -> // Regra mais geral para quem já treina em casa
+                WorkoutTemplateRepository.calisteniaCasaIntermediario
+
+            // --- Cenários para INICIANTES ---
+            praticaAtividade == "Não" && tempoDisponivel == "Menos de 30 minutos" && espacos.contains("Parque") ->
                 WorkoutTemplateRepository.pularCordaIniciante
-            }
 
-            praticaAtividade == "Não" && espacos.contains("Casa") -> {
-                Log.d(TAG, "DECISÃO: Sugerir 'Corpo Inteiro em Casa (Iniciante)'.")
+            praticaAtividade == "Não" && espacos.contains("Casa") ->
                 WorkoutTemplateRepository.corpoInteiroCasaIniciante
-            }
 
-            praticaAtividade == "Sim" && espacos.contains("Casa") -> {
-                Log.d(TAG, "DECISÃO: Sugerir 'Calistenia em Casa'.")
-                WorkoutTemplateRepository.calisteniaCasa
-            }
-
+            // Regra Padrão: Se nenhuma combinação se encaixar
             else -> null
         }
 
         workoutSugerido?.let {
-            Log.d(TAG, "Chamando a função para criar o treino '${it.nome}'.")
             criarTreinoComConteudo(it)
-        } ?: Log.d(TAG, "Nenhuma regra correspondeu. Nenhum treino será criado.")
+        }
 
         onboardingPrefs.edit().putBoolean("sugestao_treino_criada", true).apply()
     }
@@ -199,8 +194,6 @@ class treinos : AppCompatActivity() {
                         db.treinoDao().insertTreinoNota(novaNota)
                     }
                 }
-
-                // Atualiza a lista na tela
                 carregarTreinos()
             }
         }
