@@ -8,6 +8,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -21,7 +22,7 @@ import kotlinx.coroutines.launch
 
 class treinos : AppCompatActivity() {
 
-    // --- PROPRIEDADES DA CLASSE ---
+    // --- PROPRIEDADES ---
     private lateinit var recyclerViewTreinos: RecyclerView
     private lateinit var fabAddTreino: FloatingActionButton
     private lateinit var btnApagarTreinos: ImageButton
@@ -33,23 +34,42 @@ class treinos : AppCompatActivity() {
     private var modoExclusaoAtivo = false
     private lateinit var db: AppDatabase
 
-    // --- CICLO DE VIDA DA ACTIVITY ---
+    // Novo: para guardar o e-mail do usuário logado
+    private var emailUsuarioLogado: String? = null
+
+    // --- CICLO DE VIDA ---
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_treinos)
 
         db = AppDatabase.getDatabase(this)
 
+        // 1. Pega o e-mail do usuário logado no SharedPreferences
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
+
+        // Se por algum motivo não houver e-mail, encerra a tela para evitar erros
+        if (emailUsuarioLogado == null) {
+            Toast.makeText(this, "Erro: Nenhum usuário logado.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
+        // --- Inicialização das Views ---
+        recyclerViewTreinos = findViewById(R.id.recyclerViewTreinos)
         fabAddTreino = findViewById(R.id.fab_add_treino)
         btnApagarTreinos = findViewById(R.id.btn_apagar_treinos)
         clickOutsideView = findViewById(R.id.click_outside_view)
-        recyclerViewTreinos = findViewById(R.id.recyclerViewTreinos)
 
         setupWindowInsets()
         setupNavigationBar()
         setupRecyclerView()
         setupListeners()
+    }
 
+    override fun onResume() {
+        super.onResume()
+        // Recarrega os treinos sempre que a tela fica visível
         carregarTreinos()
     }
 
@@ -57,12 +77,9 @@ class treinos : AppCompatActivity() {
         if (modoExclusaoAtivo) {
             desativarModoExclusao()
         } else {
-            super.onBackPressed()
+            finishAffinity()
         }
-        finishAffinity()
     }
-
-
 
     // --- CONFIGURAÇÕES (SETUP) ---
     private fun setupListeners() {
@@ -98,26 +115,36 @@ class treinos : AppCompatActivity() {
         recyclerViewTreinos.adapter = treinosAdapter
     }
 
-    // --- LÓGICA DE DADOS (ROOM) ---
+    // --- LÓGICA DE DADOS (AGORA COM FILTRO POR USUÁRIO) ---
     private fun carregarTreinos() {
-        lifecycleScope.launch {
-            val treinosDoBanco = db.treinoDao().getAllTreinos()
-            runOnUiThread {
-                treinosAdapter.submitList(treinosDoBanco)
+        emailUsuarioLogado?.let { email ->
+            lifecycleScope.launch {
+                // 2. Passa o e-mail para a busca no banco
+                val treinosDoUsuario = db.treinoDao().getAllTreinos(email)
+                runOnUiThread {
+                    treinosAdapter.submitList(treinosDoUsuario)
+                }
             }
         }
     }
 
-    // MODIFICADO: Agora aceita um TipoTreino
     private fun adicionarTreino(nome: String, iconeResId: Int, tipo: TipoTreino) {
-        val novoTreino = TreinoEntity(nome = nome, iconeResId = iconeResId, tipoDeTreino = tipo)
-        lifecycleScope.launch {
-            db.treinoDao().insertTreino(novoTreino)
-            carregarTreinos()
+        emailUsuarioLogado?.let { email ->
+            // 3. Ao criar um novo treino, "etiqueta" com o e-mail do dono
+            val novoTreino = TreinoEntity(
+                userOwnerEmail = email,
+                nome = nome,
+                iconeResId = iconeResId,
+                tipoDeTreino = tipo
+            )
+            lifecycleScope.launch {
+                db.treinoDao().insertTreino(novoTreino)
+                carregarTreinos() // Recarrega a lista para mostrar o novo item
+            }
         }
     }
 
-    // --- MODO DE EXCLUSÃO ---
+    // --- MODO DE EXCLUSÃO (sem alterações na lógica) ---
     private fun ativarModoExclusao(primeiroItem: TreinoEntity) {
         modoExclusaoAtivo = true
         treinosAdapter.modoExclusaoAtivo = true
@@ -151,7 +178,7 @@ class treinos : AppCompatActivity() {
                 lifecycleScope.launch {
                     val idsParaApagar = treinosParaApagar.map { it.id }
                     db.treinoDao().deleteTreinosByIds(idsParaApagar)
-                    carregarTreinos()
+                    carregarTreinos() // Recarrega do banco
                 }
                 desativarModoExclusao()
             }
@@ -159,49 +186,39 @@ class treinos : AppCompatActivity() {
             .show()
     }
 
-    // --- DIÁLOGOS ---
+    // --- DIÁLOGOS (sem alterações na lógica) ---
     private fun exibirDialogoAdicionarTreino() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_adicionar_treino, null)
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        // MODIFICADO: Passa o TipoTreino correto para cada botão
         dialogView.findViewById<Button>(R.id.btn_academia).setOnClickListener {
-            adicionarTreino("Academia", R.drawable.ic_academia, TipoTreino.ACADEMIA)
-            dialog.dismiss()
+            adicionarTreino("Academia", R.drawable.ic_academia, TipoTreino.ACADEMIA); dialog.dismiss()
         }
         dialogView.findViewById<Button>(R.id.btn_corrida).setOnClickListener {
-            adicionarTreino("Corrida", R.drawable.ic_corrida, TipoTreino.CORRIDA)
-            dialog.dismiss()
+            adicionarTreino("Corrida", R.drawable.ic_corrida, TipoTreino.CORRIDA); dialog.dismiss()
         }
         dialogView.findViewById<Button>(R.id.btn_esportes).setOnClickListener {
-            adicionarTreino("Esportes", R.drawable.ic_esportes, TipoTreino.ESPORTES)
-            dialog.dismiss()
+            adicionarTreino("Esportes", R.drawable.ic_esportes, TipoTreino.ESPORTES); dialog.dismiss()
         }
         dialogView.findViewById<Button>(R.id.btn_personalizado).setOnClickListener {
-            exibirDialogoPersonalizado()
-            dialog.dismiss()
+            exibirDialogoPersonalizado(); dialog.dismiss()
         }
         dialog.show()
     }
 
     private fun exibirDialogoPersonalizado() {
         val editText = EditText(this).apply { hint = "Nome do treino" }
-        AlertDialog.Builder(this)
-            .setTitle("Treino Personalizado")
-            .setView(editText)
+        AlertDialog.Builder(this).setTitle("Treino Personalizado").setView(editText)
             .setPositiveButton("Adicionar") { _, _ ->
                 val nomeTreino = editText.text.toString().trim()
                 if (nomeTreino.isNotEmpty()) {
-                    // MODIFICADO: Passa o tipo GENERICO
                     adicionarTreino(nomeTreino, R.drawable.ic_personalizado, TipoTreino.GENERICO)
                 }
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
+            }.setNegativeButton("Cancelar", null).show()
     }
 
-    // --- CONFIGURAÇÕES DE UI (NAVIGATION & WINDOWS) ---
+    // --- CONFIGURAÇÕES DE UI ---
     private fun setupWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -209,7 +226,6 @@ class treinos : AppCompatActivity() {
             insets
         }
     }
-
     private fun setupNavigationBar() {
         val navBar = findViewById<LinearLayout>(R.id.navigation_bar)
         navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {

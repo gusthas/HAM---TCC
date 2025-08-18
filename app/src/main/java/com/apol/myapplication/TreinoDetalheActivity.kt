@@ -13,7 +13,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
-import com.apol.myapplication.DivisaoDetalheActivity
 import com.apol.myapplication.data.model.DivisaoTreino
 import com.apol.myapplication.data.model.TipoDivisao
 import com.apol.myapplication.data.model.TreinoEntity
@@ -28,6 +27,7 @@ class TreinoDetalheActivity : AppCompatActivity() {
     private var treinoId: Long = -1L
     private var treinoAtual: TreinoEntity? = null
     private var modoExclusaoAtivo = false
+    private var emailUsuarioLogado: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +36,15 @@ class TreinoDetalheActivity : AppCompatActivity() {
         db = AppDatabase.getDatabase(this)
         treinoId = intent.getLongExtra("TREINO_ID", -1L)
         findViewById<TextView>(R.id.nome_treino_detalhe).text = intent.getStringExtra("TREINO_NOME") ?: "Detalhes"
+
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
+
+        if (emailUsuarioLogado == null) {
+            Toast.makeText(this, "Erro de sessão. Faça login novamente.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
 
         setupRecyclerView()
         setupListeners()
@@ -46,6 +55,25 @@ class TreinoDetalheActivity : AppCompatActivity() {
         carregarDadosIniciais()
     }
 
+    override fun onBackPressed() {
+        if (modoExclusaoAtivo) {
+            desativarModoExclusao()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    private fun setupListeners() {
+        findViewById<ImageButton>(R.id.btn_voltar_detalhe).setOnClickListener { finish() }
+        findViewById<FloatingActionButton>(R.id.fab_add_divisao).setOnClickListener { adicionarNovaDivisaoLetra() }
+        findViewById<ImageButton>(R.id.btn_apagar_divisoes).setOnClickListener {
+            val selecionados = divisaoAdapter.getSelecionados()
+            if (selecionados.isNotEmpty()) {
+                confirmarExclusao(selecionados)
+            }
+        }
+    }
+
     private fun setupRecyclerView() {
         val recyclerViewDivisoes = findViewById<RecyclerView>(R.id.recyclerViewDivisoes)
         divisaoAdapter = DivisaoAdapter(listaDivisoes,
@@ -53,7 +81,6 @@ class TreinoDetalheActivity : AppCompatActivity() {
                 if (modoExclusaoAtivo) {
                     toggleSelecao(divisao)
                 } else {
-                    // LÓGICA DE NAVEGAÇÃO CORRETA E FINAL
                     val intent = Intent(this, DivisaoDetalheActivity::class.java).apply {
                         putExtra("TREINO_ID", treinoId)
                         putExtra("DIVISAO_ID", divisao.id)
@@ -76,27 +103,6 @@ class TreinoDetalheActivity : AppCompatActivity() {
         recyclerViewDivisoes.adapter = divisaoAdapter
     }
 
-    // As outras funções (setupListeners, carregarDadosIniciais, confirmarExclusao, etc.)
-    // que gerenciam a lista de divisões estão corretas.
-    override fun onBackPressed() {
-        if (modoExclusaoAtivo) {
-            desativarModoExclusao()
-        } else {
-            super.onBackPressed()
-        }
-    }
-
-    private fun setupListeners() {
-        findViewById<ImageButton>(R.id.btn_voltar_detalhe).setOnClickListener { finish() }
-        findViewById<FloatingActionButton>(R.id.fab_add_divisao).setOnClickListener { adicionarNovaDivisaoLetra() }
-        findViewById<ImageButton>(R.id.btn_apagar_divisoes).setOnClickListener {
-            val selecionados = divisaoAdapter.getSelecionados()
-            if (selecionados.isNotEmpty()) {
-                confirmarExclusao(selecionados)
-            }
-        }
-    }
-
     private fun carregarDadosIniciais() {
         lifecycleScope.launch {
             treinoAtual = db.treinoDao().getTreinoById(treinoId)
@@ -114,22 +120,26 @@ class TreinoDetalheActivity : AppCompatActivity() {
     }
 
     private fun carregarDivisoesDoBanco() {
-        lifecycleScope.launch {
-            val divisoesDoBanco = db.treinoDao().getDivisoesByTreinoId(treinoId)
-            runOnUiThread {
-                divisaoAdapter.submitList(divisoesDoBanco)
-                listaDivisoes.clear()
-                listaDivisoes.addAll(divisoesDoBanco)
+        emailUsuarioLogado?.let { email ->
+            lifecycleScope.launch {
+                val divisoesDoBanco = db.treinoDao().getDivisoesByTreinoId(treinoId) // Assumindo que esta query filtra por treinoId, o que é suficiente.
+                runOnUiThread {
+                    divisaoAdapter.submitList(divisoesDoBanco)
+                    listaDivisoes.clear()
+                    listaDivisoes.addAll(divisoesDoBanco)
+                }
             }
         }
     }
 
     private fun adicionarNovaDivisaoLetra() {
-        val proximaLetraChar = ('A' + listaDivisoes.size).toChar()
-        val novaDivisao = DivisaoTreino(treinoId = treinoId, nome = "Treino $proximaLetraChar", ordem = listaDivisoes.size)
-        lifecycleScope.launch {
-            db.treinoDao().insertDivisao(novaDivisao)
-            carregarDivisoesDoBanco()
+        emailUsuarioLogado?.let { email ->
+            val proximaLetraChar = ('A' + listaDivisoes.size).toChar()
+            val novaDivisao = DivisaoTreino(userOwnerEmail = email, treinoId = treinoId, nome = "Treino $proximaLetraChar", ordem = listaDivisoes.size)
+            lifecycleScope.launch {
+                db.treinoDao().insertDivisao(novaDivisao)
+                carregarDivisoesDoBanco()
+            }
         }
     }
 
@@ -205,19 +215,25 @@ class TreinoDetalheActivity : AppCompatActivity() {
     }
 
     private fun configurarDivisoes(treino: TreinoEntity, tipo: TipoDivisao) {
-        lifecycleScope.launch {
-            val treinoAtualizado = treino.copy(tipoDivisao = tipo)
-            db.treinoDao().updateTreino(treinoAtualizado)
-            treinoAtual = treinoAtualizado
+        emailUsuarioLogado?.let { email ->
+            lifecycleScope.launch {
+                val treinoAtualizado = treino.copy(tipoDivisao = tipo)
+                db.treinoDao().updateTreino(treinoAtualizado)
+                treinoAtual = treinoAtualizado
 
-            if (tipo == TipoDivisao.DIAS_DA_SEMANA) {
-                val dias = listOf("Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado")
-                dias.forEachIndexed { index, nome -> db.treinoDao().insertDivisao(DivisaoTreino(treinoId = treino.id, nome = nome, ordem = index)) }
-            } else { // LETRAS
-                val letras = listOf("Treino A", "Treino B", "Treino C")
-                letras.forEachIndexed { index, nome -> db.treinoDao().insertDivisao(DivisaoTreino(treinoId = treino.id, nome = nome, ordem = index)) }
+                if (tipo == TipoDivisao.DIAS_DA_SEMANA) {
+                    val dias = listOf("Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado")
+                    dias.forEachIndexed { index, nome ->
+                        db.treinoDao().insertDivisao(DivisaoTreino(userOwnerEmail = email, treinoId = treino.id, nome = nome, ordem = index))
+                    }
+                } else { // LETRAS
+                    val letras = listOf("Treino A", "Treino B", "Treino C")
+                    letras.forEachIndexed { index, nome ->
+                        db.treinoDao().insertDivisao(DivisaoTreino(userOwnerEmail = email, treinoId = treino.id, nome = nome, ordem = index))
+                    }
+                }
+                carregarDadosIniciais()
             }
-            carregarDadosIniciais()
         }
     }
 

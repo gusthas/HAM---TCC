@@ -1,4 +1,4 @@
-
+// Substitua o conteúdo COMPLETO do seu arquivo TreinoNotaAdapter.kt
 package com.apol.myapplication.data.model
 
 import android.view.LayoutInflater
@@ -13,7 +13,7 @@ import com.apol.myapplication.R
 class TreinoNotaAdapter(
     private var notas: MutableList<TreinoNota>,
     private val onItemClick: (TreinoNota) -> Unit,
-    private val onItemLongClick: (TreinoNota) -> Unit // Adicionado
+    private val onItemLongClick: (TreinoNota) -> Unit
 ) : RecyclerView.Adapter<TreinoNotaAdapter.NotaViewHolder>() {
 
     var modoExclusaoAtivo: Boolean = false
@@ -39,7 +39,8 @@ class TreinoNotaAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NotaViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_treino_nota, parent, false)
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_treino_nota, parent, false)
         return NotaViewHolder(view)
     }
 
@@ -53,7 +54,6 @@ class TreinoNotaAdapter(
             holder.conteudo.visibility = View.GONE
         }
 
-        // Altera o fundo do item se ele estiver selecionado
         val background = if (nota.isSelected) R.drawable.bg_selected_item else R.drawable.rounded_semi_transparent
         holder.container.background = ContextCompat.getDrawable(holder.itemView.context, background)
 

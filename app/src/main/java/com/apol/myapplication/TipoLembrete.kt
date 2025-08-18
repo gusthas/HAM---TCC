@@ -1,4 +1,5 @@
-package com.apol.myapplication
+
+package com.apol.myapplication.data.model
 
 import kotlinx.serialization.Serializable
 
@@ -7,5 +8,5 @@ enum class TipoLembrete {
     NENHUM,
     DIARIO,
     MENSAL,
-    SEGUNDOS_TESTE // Para depuração rápida
+    SEGUNDOS_TESTE
 }

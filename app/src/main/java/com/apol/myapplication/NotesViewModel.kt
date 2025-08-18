@@ -2,104 +2,98 @@ package com.apol.myapplication
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import androidx.lifecycle.viewModelScope
+import com.apol.myapplication.data.model.Bloco
+import com.apol.myapplication.data.model.Note
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class NotesViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val prefs = application.getSharedPreferences("app_prefs", 0)
-    private val json = Json { encodeDefaults = true }
+    private val db = AppDatabase.getDatabase(application)
+    private val notesDao = db.notesDao()
 
+    private val _notes = MutableStateFlow<List<Note>>(emptyList())
+    val notes: StateFlow<List<Note>> = _notes.asStateFlow()
 
-    private val _notes = MutableStateFlow<List<Note>>(loadNotes())
-    val notes: StateFlow<List<Note>> get() = _notes
+    private val _blocos = MutableStateFlow<List<Bloco>>(emptyList())
+    val blocos: StateFlow<List<Bloco>> = _blocos.asStateFlow()
 
-    fun addNote(text: String) {
-        val novaNota = Note(text = text)
-        val updated = listOf(novaNota) + _notes.value
-        _notes.value = updated
-        saveNotes(updated)
+    private var currentUserEmail: String? = null
+
+    // Esta função define o usuário e dispara o carregamento inicial
+    fun setCurrentUser(email: String) {
+        currentUserEmail = email
+        loadNotes()
+        loadBlocos()
     }
 
-    fun deleteNotes(lista: List<Note>) {
-        val updated = _notes.value.filterNot { it in lista }
-        _notes.value = updated
-        saveNotes(updated)
+    // --- FUNÇÕES CORRIGIDAS ---
+    private fun loadNotes() {
+        currentUserEmail?.let { email ->
+            viewModelScope.launch {
+                // "Escuta" o fluxo de dados e atualiza a lista sempre que houver mudanças
+                notesDao.getNotesByUser(email).collect { notesFromDb ->
+                    _notes.value = notesFromDb
+                }
+            }
+        }
+    }
+
+    private fun loadBlocos() {
+        currentUserEmail?.let { email ->
+            viewModelScope.launch {
+                // "Escuta" o fluxo de dados e atualiza a lista sempre que houver mudanças
+                notesDao.getBlocosByUser(email).collect { blocosFromDb ->
+                    _blocos.value = blocosFromDb
+                }
+            }
+        }
+    }
+
+    // As funções abaixo agora não precisam mais chamar 'loadNotes' ou 'loadBlocos',
+    // pois o Flow já faz a atualização automática.
+    fun addNote(text: String) {
+        currentUserEmail?.let { email ->
+            viewModelScope.launch {
+                val newNote = Note(userOwnerEmail = email, text = text)
+                notesDao.insertNote(newNote)
+            }
+        }
+    }
+
+    fun adicionarBloco(bloco: Bloco) {
+        currentUserEmail?.let { email ->
+            val blocoComDono = bloco.copy(userOwnerEmail = email)
+            viewModelScope.launch {
+                notesDao.insertBloco(blocoComDono)
+            }
+        }
     }
 
     fun updateNote(note: Note) {
-        val updated = _notes.value.map {
-            if (it.id == note.id) note else it
+        viewModelScope.launch {
+            notesDao.updateNote(note)
         }
-        _notes.value = updated
-        saveNotes(updated)
-    }
-
-    private fun loadNotes(): List<Note> {
-        val jsonString = prefs.getString("notes", null) ?: return emptyList()
-        return try {
-            json.decodeFromString(jsonString)
-        } catch (e: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun saveNotes(list: List<Note>) {
-        val jsonString = json.encodeToString(list)
-        prefs.edit().putString("notes", jsonString).apply()
-    }
-
-    // --- Blocos ---
-    private val _blocos = MutableStateFlow<List<Bloco>>(loadBlocos())
-    val blocos: StateFlow<List<Bloco>> get() = _blocos
-
-    fun adicionarBloco(bloco: Bloco) {
-        val updated = listOf(bloco) + _blocos.value
-        _blocos.value = updated
-        saveBlocos(updated)
-    }
-
-    fun deleteBlocos(lista: List<Bloco>) {
-        val idsToDelete = lista.map { it.id }
-        val updated = _blocos.value.filterNot { it.id in idsToDelete }
-        _blocos.value = updated
-        saveBlocos(updated)
     }
 
     fun updateBloco(bloco: Bloco) {
-        val updated = _blocos.value.map {
-            if (it.id == bloco.id) bloco else it
-        }
-        _blocos.value = updated
-        saveBlocos(updated)
-    }
-
-    private fun loadBlocos(): List<Bloco> {
-        val jsonString = prefs.getString("blocos", null) ?: return emptyList()
-        return try {
-            json.decodeFromString(jsonString)
-        } catch (e: Exception) {
-            emptyList()
+        viewModelScope.launch {
+            notesDao.updateBloco(bloco)
         }
     }
 
-    private fun saveBlocos(list: List<Bloco>) {
-        val jsonString = json.encodeToString(list)
-        prefs.edit().putString("blocos", jsonString).apply()
+    fun deleteNotes(notesToDelete: List<Note>) {
+        viewModelScope.launch {
+            notesDao.deleteNotes(notesToDelete)
+        }
     }
 
-    fun carregarBlocosExemplo() {
-        if (_blocos.value.isEmpty()) {
-            val exemplo = listOf(
-                Bloco(nome = "Metas"),
-                Bloco(nome = "Finanças"),
-                Bloco(nome = "Estudos")
-            )
-            _blocos.value = exemplo
-            saveBlocos(exemplo)
+    fun deleteBlocos(blocosToDelete: List<Bloco>) {
+        viewModelScope.launch {
+            notesDao.deleteBlocos(blocosToDelete)
         }
     }
 }

@@ -18,6 +18,7 @@ import androidx.room.PrimaryKey
 data class TreinoNota(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    var userOwnerEmail: String,
     val divisaoId: Long, // Para saber a qual dia/divisão a nota pertence
     var titulo: String,
     var conteudo: String = "" // O texto livre que o usuário vai escrever

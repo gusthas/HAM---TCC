@@ -12,8 +12,15 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.*
-import androidx.activity.enableEdgeToEdge
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -22,16 +29,16 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.apol.myapplication.data.model.Bloco
+import com.apol.myapplication.data.model.Note
+import com.apol.myapplication.data.model.TipoLembrete
+
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
 class anotacoes : AppCompatActivity() {
-
-    companion object {
-        const val REQUEST_CODE_SELECIONAR_BLOCO = 1001
-    }
 
     private lateinit var viewModel: NotesViewModel
     private lateinit var recyclerView: RecyclerView
@@ -48,18 +55,11 @@ class anotacoes : AppCompatActivity() {
     private lateinit var buttonAdd: ImageButton
     private lateinit var newNoteBox: LinearLayout
     private lateinit var prefs: android.content.SharedPreferences
+    private var emailUsuarioLogado: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_anotacoes)
-        criarCanalNotificacao()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 100)
-            }
-        }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -67,41 +67,39 @@ class anotacoes : AppCompatActivity() {
             insets
         }
 
-        val navBar = findViewById<LinearLayout>(R.id.navigation_bar)
-        navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {
-            startActivity(Intent(this, Bemvindouser::class.java))
-        }
-        navBar.findViewById<LinearLayout>(R.id.botao_anotacoes).setOnClickListener { /* já está aqui */ }
-        navBar.findViewById<LinearLayout>(R.id.botao_habitos).setOnClickListener {
-            startActivity(Intent(this, habitos::class.java))
-        }
-        navBar.findViewById<LinearLayout>(R.id.botao_treinos).setOnClickListener {
-            startActivity(Intent(this, treinos::class.java))
-        }
-        navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
-            startActivity(Intent(this, CronometroActivity::class.java))
-        }
-        navBar.findViewById<LinearLayout>(R.id.botao_sugestoes).setOnClickListener {
-            startActivity(Intent(this, SugestaoUser::class.java))        }
         prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
 
-        val abrirModoBlocos = intent.getBooleanExtra("modo_blocos_ativo", false)
-        if (abrirModoBlocos) {
-            modoBlocosAtivo = true
-            prefs.edit().putBoolean("modo_blocos_ativo", true).apply()
-        } else {
-            modoBlocosAtivo = prefs.getBoolean("modo_blocos_ativo", false)
+        if (emailUsuarioLogado == null) {
+            Toast.makeText(this, "Erro de sessão. Faça login novamente.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
         }
 
-        viewModel = ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory.getInstance(application)).get(NotesViewModel::class.java)
+        viewModel = ViewModelProvider(this).get(NotesViewModel::class.java)
+        viewModel.setCurrentUser(emailUsuarioLogado!!)
 
         recyclerView = findViewById(R.id.recyclerViewNotes)
         recyclerView.layoutManager = LinearLayoutManager(this)
+        editNote = findViewById(R.id.edit_note)
+        buttonAdd = findViewById(R.id.button_add_note)
+        newNoteBox = findViewById(R.id.new_note_box)
+        botaoApagar = findViewById(R.id.button_delete_selected)
+        clickOutsideView = findViewById(R.id.click_outside_view)
 
+        setupAdapters()
+        setupListeners()
+
+        modoBlocosAtivo = prefs.getBoolean("modo_blocos_ativo_${emailUsuarioLogado}", false)
+        atualizarModoUI()
+        verificarComandosDeEntrada()
+        criarCanalNotificacao()
+    }
+
+    private fun setupAdapters() {
         notesAdapter = NotesAdapter(
             onItemClick = { note ->
-                if (modoExclusaoAtivo) toggleSelection(note)
-                else openEditDialog(note)
+                if (modoExclusaoAtivo) toggleSelection(note) else openEditDialog(note)
             },
             onItemLongClick = { note ->
                 if (!modoExclusaoAtivo) ativarModoExclusao()
@@ -126,16 +124,9 @@ class anotacoes : AppCompatActivity() {
                 atualizarBotaoApagar()
             }
         )
-        blocosAdapter.onExclusaoModoVazio = {
-            desativarModoExclusaoBlocos()
-            esconderBotaoApagar()
-        }
+    }
 
-        editNote = findViewById(R.id.edit_note)
-        buttonAdd = findViewById(R.id.button_add_note)
-        newNoteBox = findViewById(R.id.new_note_box)
-        botaoApagar = findViewById(R.id.button_delete_selected)
-
+    private fun setupListeners() {
         buttonAdd.setOnClickListener {
             if (modoBlocosAtivo) {
                 mostrarDialogoCriarBloco()
@@ -144,7 +135,6 @@ class anotacoes : AppCompatActivity() {
                 if (text.isNotEmpty()) {
                     viewModel.addNote(text)
                     editNote.text.clear()
-                    recyclerView.scrollToPosition(0)
                 }
             }
         }
@@ -153,150 +143,28 @@ class anotacoes : AppCompatActivity() {
             if (modoBlocosAtivo) {
                 val selecionados = blocosAdapter.getSelecionados()
                 if (selecionados.isNotEmpty()) {
-                    confirmarExclusao(selecionados.size, "bloco(s)") {
-                        viewModel.deleteBlocos(selecionados)
-                        blocosAdapter.limparSelecao()
-                        desativarModoExclusaoBlocos()
-                    }
+                    confirmarExclusao("bloco(s)", selecionados.size) { viewModel.deleteBlocos(selecionados) }
                 }
             } else {
                 val selecionados = notesAdapter.getSelecionados()
                 if (selecionados.isNotEmpty()) {
-                    confirmarExclusao(selecionados.size, "anotação(ões)") {
-                        viewModel.deleteNotes(selecionados)
-                        notesAdapter.limparSelecao()
-                        desativarModoExclusao()
-                    }
+                    confirmarExclusao("anotação(ões)", selecionados.size) { viewModel.deleteNotes(selecionados) }
                 }
             }
         }
-        botaoApagar.visibility = View.GONE
 
-        clickOutsideView = findViewById(R.id.click_outside_view)
         clickOutsideView.setOnClickListener {
             if (modoExclusaoAtivo) desativarModoExclusao()
             if (modoExclusaoBlocosAtivo) desativarModoExclusaoBlocos()
         }
 
-        val botaoToggleModo = findViewById<ImageButton>(R.id.button_toggle_mode)
-        botaoToggleModo.setOnClickListener {
+        findViewById<ImageButton>(R.id.button_toggle_mode).setOnClickListener {
             modoBlocosAtivo = !modoBlocosAtivo
-            prefs.edit().putBoolean("modo_blocos_ativo", modoBlocosAtivo).apply()
+            prefs.edit().putBoolean("modo_blocos_ativo_${emailUsuarioLogado}", modoBlocosAtivo).apply()
             atualizarModoUI()
         }
 
-        atualizarModoUI()
-
-        // Verifica se a tela foi aberta por um comando da tela principal
-        verificarComandosDeEntrada()
-    }
-
-    override fun onBackPressed() {
-        // Em vez de voltar para a tela anterior (comportamento padrão),
-        // esta função encerra o aplicativo por completo.
-        finishAffinity()
-    }
-
-    private fun verificarComandosDeEntrada() {
-        val deveAbrirDialogo = intent.getBooleanExtra("abrir_dialogo_novo_bloco", false)
-        val blocoIdParaAbrir = intent.getStringExtra("abrir_bloco_id")
-
-        if (deveAbrirDialogo) {
-            window.decorView.post { mostrarDialogoCriarBloco() }
-        } else if (blocoIdParaAbrir != null) {
-            window.decorView.post {
-                lifecycleScope.launch {
-                    val todosOsBlocos = viewModel.blocos.first()
-                    val bloco = todosOsBlocos.find { it.id == blocoIdParaAbrir }
-                    bloco?.let { abrirDialogEditarBloco(it) }
-                }
-            }
-        }
-        // Limpa os extras para não executar a ação novamente
-        intent.removeExtra("abrir_dialogo_novo_bloco")
-        intent.removeExtra("abrir_bloco_id")
-    }
-
-    private fun mostrarDialogoCriarBloco() {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_selecionar_bloco, null)
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setCancelable(true)
-            .create()
-
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-        val adicionarBloco: (String) -> Unit = { nomeBloco ->
-            viewModel.adicionarBloco(Bloco(nome = nomeBloco))
-            dialog.dismiss()
-        }
-
-        dialogView.findViewById<Button>(R.id.bt_financas).setOnClickListener { adicionarBloco("Finanças") }
-        dialogView.findViewById<Button>(R.id.bt_estudos).setOnClickListener { adicionarBloco("Estudos") }
-        dialogView.findViewById<Button>(R.id.bt_metas).setOnClickListener { adicionarBloco("Metas") }
-        dialogView.findViewById<Button>(R.id.bt_trabalho).setOnClickListener { adicionarBloco("Trabalho") }
-        dialogView.findViewById<Button>(R.id.bt_saude).setOnClickListener { adicionarBloco("Saúde") }
-
-        dialog.show()
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 100) {
-            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Permissão de notificação concedida", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Permissão de notificação negada", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun toggleSelection(note: Note) {
-        note.isSelected = !note.isSelected
-        notesAdapter.notifyDataSetChanged()
-        atualizarBotaoApagar()
-        if (notesAdapter.getSelecionados().isEmpty()) desativarModoExclusao()
-    }
-
-    private fun ativarModoExclusao() {
-        modoExclusaoAtivo = true
-        notesAdapter.modoExclusaoAtivo = true
-        notesAdapter.notifyDataSetChanged()
-        mostrarBotaoApagar()
-    }
-
-    private fun desativarModoExclusao() {
-        modoExclusaoAtivo = false
-        notesAdapter.limparSelecao()
-        esconderBotaoApagar()
-    }
-
-    private fun ativarModoExclusaoBlocos() {
-        modoExclusaoBlocosAtivo = true
-        blocosAdapter.modoExclusaoAtivo = true
-        blocosAdapter.notifyDataSetChanged()
-        mostrarBotaoApagar()
-    }
-
-    private fun desativarModoExclusaoBlocos() {
-        modoExclusaoBlocosAtivo = false
-        blocosAdapter.limparSelecao()
-        esconderBotaoApagar()
-    }
-
-    private fun mostrarBotaoApagar() {
-        botaoApagar.visibility = View.VISIBLE
-    }
-
-    private fun esconderBotaoApagar() {
-        botaoApagar.visibility = View.GONE
-    }
-
-    private fun atualizarBotaoApagar() {
-        val count = if (modoBlocosAtivo) blocosAdapter.getSelecionados().size else notesAdapter.getSelecionados().size
-        botaoApagar.isEnabled = count > 0
-        botaoApagar.visibility = if (count > 0) View.VISIBLE else View.GONE
-        botaoApagar.contentDescription = "Apagar selecionados ($count)"
+        configurarNavBar()
     }
 
     private fun carregarListaAnotacoes() {
@@ -315,25 +183,6 @@ class anotacoes : AppCompatActivity() {
         }
     }
 
-    private fun openEditDialog(note: Note) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_note, null)
-        val editText = dialogView.findViewById<EditText>(R.id.editNoteDialog)
-        editText.setText(note.text)
-
-        AlertDialog.Builder(this)
-            .setTitle("Editar Anotação")
-            .setView(dialogView)
-            .setPositiveButton("Salvar") { _, _ ->
-                val newText = editText.text.toString().trim()
-                if (newText.isNotEmpty()) {
-                    val updatedNote = note.copy(text = newText, lastModified = System.currentTimeMillis())
-                    viewModel.updateNote(updatedNote)
-                }
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
     private fun atualizarModoUI() {
         val titulo = findViewById<TextView>(R.id.textView26)
         val iconeTitulo = findViewById<ImageView>(R.id.icon_header)
@@ -341,16 +190,12 @@ class anotacoes : AppCompatActivity() {
         if (modoBlocosAtivo) {
             titulo.text = "Meus Blocos"
             iconeTitulo.setImageResource(R.drawable.ic_block)
-            newNoteBox.visibility = View.VISIBLE
-            editNote.isEnabled = false
             editNote.hint = "Adicionar novo bloco"
             recyclerView.adapter = blocosAdapter
             carregarListaBlocos()
         } else {
             titulo.text = "Minhas Anotações"
             iconeTitulo.setImageResource(R.drawable.ic_notes)
-            newNoteBox.visibility = View.VISIBLE
-            editNote.isEnabled = true
             editNote.hint = "O que deseja anotar?"
             recyclerView.adapter = notesAdapter
             carregarListaAnotacoes()
@@ -359,21 +204,85 @@ class anotacoes : AppCompatActivity() {
         desativarModoExclusaoBlocos()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_CODE_SELECIONAR_BLOCO && resultCode == RESULT_OK) {
-            val nomeBloco = data?.getStringExtra("blocoSelecionado")
-            nomeBloco?.let {
-                viewModel.adicionarBloco(Bloco(nome = it))
-            }
-        }
+    private fun confirmarExclusao(tipo: String, quantidade: Int, onConfirm: () -> Unit) {
+        AlertDialog.Builder(this)
+            .setTitle("Excluir $tipo")
+            .setMessage("Tem certeza que deseja apagar $quantidade item(ns)?")
+            .setPositiveButton("Excluir") { _, _ -> onConfirm() }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
-    private fun confirmarExclusao(quantidade: Int, tipo: String, onConfirm: () -> Unit) {
+    private fun toggleSelection(note: Note) {
+        note.isSelected = !note.isSelected
+        notesAdapter.notifyDataSetChanged()
+        atualizarBotaoApagar()
+        if (notesAdapter.getSelecionados().isEmpty()) desativarModoExclusao()
+    }
+
+    private fun ativarModoExclusao() {
+        modoExclusaoAtivo = true; notesAdapter.modoExclusaoAtivo = true
+        mostrarBotaoApagar(); notesAdapter.notifyDataSetChanged()
+    }
+
+    private fun desativarModoExclusao() {
+        modoExclusaoAtivo = false; notesAdapter.limparSelecao()
+        esconderBotaoApagar()
+    }
+
+    private fun ativarModoExclusaoBlocos() {
+        modoExclusaoBlocosAtivo = true; blocosAdapter.modoExclusaoAtivo = true
+        mostrarBotaoApagar(); blocosAdapter.notifyDataSetChanged()
+    }
+
+    private fun desativarModoExclusaoBlocos() {
+        modoExclusaoBlocosAtivo = false; blocosAdapter.limparSelecao()
+        esconderBotaoApagar()
+    }
+
+    private fun mostrarBotaoApagar() {
+        botaoApagar.visibility = View.VISIBLE
+    }
+
+    private fun esconderBotaoApagar() {
+        botaoApagar.visibility = View.GONE
+    }
+
+    private fun atualizarBotaoApagar() {
+        val count = if (modoBlocosAtivo) blocosAdapter.getSelecionados().size else notesAdapter.getSelecionados().size
+        botaoApagar.visibility = if (count > 0) View.VISIBLE else View.GONE
+    }
+
+    private fun mostrarDialogoCriarBloco() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_selecionar_bloco, null)
+        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        val adicionarBloco: (String) -> Unit = { nomeBloco ->
+            viewModel.adicionarBloco(Bloco(userOwnerEmail = emailUsuarioLogado!!, nome = nomeBloco))
+            dialog.dismiss()
+        }
+        dialogView.findViewById<Button>(R.id.bt_financas).setOnClickListener { adicionarBloco("Finanças") }
+        dialogView.findViewById<Button>(R.id.bt_estudos).setOnClickListener { adicionarBloco("Estudos") }
+        dialogView.findViewById<Button>(R.id.bt_metas).setOnClickListener { adicionarBloco("Metas") }
+        dialogView.findViewById<Button>(R.id.bt_trabalho).setOnClickListener { adicionarBloco("Trabalho") }
+        dialogView.findViewById<Button>(R.id.bt_saude).setOnClickListener { adicionarBloco("Saúde") }
+        dialog.show()
+    }
+
+    private fun openEditDialog(note: Note) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_note, null)
+        val editText = dialogView.findViewById<EditText>(R.id.editNoteDialog)
+        editText.setText(note.text)
         AlertDialog.Builder(this)
-            .setTitle("Excluir $quantidade $tipo?")
-            .setMessage("Tem certeza que deseja apagar?")
-            .setPositiveButton("Excluir") { _, _ -> onConfirm() }
+            .setTitle("Editar Anotação")
+            .setView(dialogView)
+            .setPositiveButton("Salvar") { _, _ ->
+                val newText = editText.text.toString().trim()
+                if (newText.isNotEmpty()) {
+                    val updatedNote = note.copy(text = newText)
+                    viewModel.updateNote(updatedNote)
+                }
+            }
             .setNegativeButton("Cancelar", null)
             .show()
     }
@@ -400,7 +309,6 @@ class anotacoes : AppCompatActivity() {
                 blocoTemporario.diasLembrete = configAlterada.diasLembrete
                 blocoTemporario.horariosLembrete = configAlterada.horariosLembrete
                 blocoTemporario.segundosLembrete = configAlterada.segundosLembrete
-                Toast.makeText(this, "Configuração de lembrete pronta para salvar.", Toast.LENGTH_SHORT).show()
             }
         }
         btnCancelar.setOnClickListener { dialog.dismiss() }
@@ -416,12 +324,38 @@ class anotacoes : AppCompatActivity() {
             cancelarLembretesParaBloco(bloco)
             if (bloco.tipoLembrete != TipoLembrete.NENHUM) {
                 agendarLembretesParaBloco(bloco)
-            } else {
-                Toast.makeText(this, "Lembrete removido.", Toast.LENGTH_SHORT).show()
             }
             dialog.dismiss()
         }
         dialog.show()
+    }
+
+    private fun configurarNavBar() {
+        val navBar = findViewById<LinearLayout>(R.id.navigation_bar)
+        navBar.findViewById<LinearLayout>(R.id.botao_inicio).setOnClickListener {
+            startActivity(Intent(this, Bemvindouser::class.java))
+        }
+        navBar.findViewById<LinearLayout>(R.id.botao_anotacoes).setOnClickListener { /* já está aqui */ }
+        navBar.findViewById<LinearLayout>(R.id.botao_habitos).setOnClickListener {
+            startActivity(Intent(this, habitos::class.java))
+        }
+        navBar.findViewById<LinearLayout>(R.id.botao_treinos).setOnClickListener {
+            startActivity(Intent(this, treinos::class.java))
+        }
+        navBar.findViewById<LinearLayout>(R.id.botao_cronometro).setOnClickListener {
+            startActivity(Intent(this, CronometroActivity::class.java))
+        }
+        navBar.findViewById<LinearLayout>(R.id.botao_sugestoes).setOnClickListener {
+            startActivity(Intent(this, SugestaoUser::class.java))
+        }
+    }
+
+    private fun verificarComandosDeEntrada() {
+        val deveAbrirDialogo = intent.getBooleanExtra("abrir_selecao_blocos", false)
+        if (deveAbrirDialogo) {
+            window.decorView.post { mostrarDialogoCriarBloco() }
+            intent.removeExtra("abrir_selecao_blocos")
+        }
     }
 
     private fun abrirDialogConfigurarLembrete(bloco: Bloco, onSave: (Bloco) -> Unit) {
@@ -465,20 +399,13 @@ class anotacoes : AppCompatActivity() {
             val blocoConfigurado = bloco.copy()
             when (radioGroup.checkedRadioButtonId) {
                 R.id.radio_diario -> {
-                    blocoConfigurado.tipoLembrete = TipoLembrete.DIARIO
-                    blocoConfigurado.diasLembrete = emptyList()
-                    blocoConfigurado.segundosLembrete = null
+                    blocoConfigurado.tipoLembrete = TipoLembrete.DIARIO; blocoConfigurado.diasLembrete = emptyList(); blocoConfigurado.segundosLembrete = null
                 }
                 R.id.radio_mensal -> {
-                    blocoConfigurado.tipoLembrete = TipoLembrete.MENSAL
-                    blocoConfigurado.diasLembrete = inputDias.text.toString().split(',').mapNotNull { it.trim().toIntOrNull()?.coerceIn(1, 31) }
-                    blocoConfigurado.segundosLembrete = null
+                    blocoConfigurado.tipoLembrete = TipoLembrete.MENSAL; blocoConfigurado.diasLembrete = inputDias.text.toString().split(',').mapNotNull { it.trim().toIntOrNull()?.coerceIn(1, 31) }; blocoConfigurado.segundosLembrete = null
                 }
                 R.id.radio_segundos_teste -> {
-                    blocoConfigurado.tipoLembrete = TipoLembrete.SEGUNDOS_TESTE
-                    blocoConfigurado.segundosLembrete = inputSegundos.text.toString().toLongOrNull()
-                    blocoConfigurado.diasLembrete = emptyList()
-                    blocoConfigurado.horariosLembrete = emptyList()
+                    blocoConfigurado.tipoLembrete = TipoLembrete.SEGUNDOS_TESTE; blocoConfigurado.segundosLembrete = inputSegundos.text.toString().toLongOrNull(); blocoConfigurado.diasLembrete = emptyList(); blocoConfigurado.horariosLembrete = emptyList()
                 }
                 else -> blocoConfigurado.tipoLembrete = TipoLembrete.NENHUM
             }
@@ -577,7 +504,7 @@ class anotacoes : AppCompatActivity() {
 
     private fun getNextMonthlyOccurrence(dia: Int, hora: Int, minuto: Int): Calendar? {
         val agora = Calendar.getInstance()
-        var proximoAgendamento = Calendar.getInstance().apply {
+        val proximoAgendamento = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, hora)
             set(Calendar.MINUTE, minuto)
             set(Calendar.SECOND, 0)
@@ -603,3 +530,5 @@ class anotacoes : AppCompatActivity() {
         }
     }
 }
+
+

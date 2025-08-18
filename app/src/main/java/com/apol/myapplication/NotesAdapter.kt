@@ -6,8 +6,9 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
-import com.apol.myapplication.Note
+
 import com.apol.myapplication.R
+import com.apol.myapplication.data.model.Note
 
 class NotesAdapter(
     private val onItemClick: (Note) -> Unit,

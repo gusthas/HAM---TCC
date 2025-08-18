@@ -24,6 +24,7 @@ enum class TipoDivisao {
 data class TreinoEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    var userOwnerEmail: String,
     val nome: String,
     val iconeResId: Int,
     val tipoDivisao: TipoDivisao = TipoDivisao.NAO_DEFINIDO,

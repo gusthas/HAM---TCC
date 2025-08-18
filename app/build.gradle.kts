@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.ui.test.android)
+    implementation(libs.androidx.adapters)
 
     // Testes
     testImplementation(libs.junit)

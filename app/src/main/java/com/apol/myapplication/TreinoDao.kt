@@ -12,8 +12,8 @@ interface TreinoDao {
     // --- Treinos ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTreino(treino: TreinoEntity): Long
-    @Query("SELECT * FROM treinos")
-    suspend fun getAllTreinos(): List<TreinoEntity>
+    @Query("SELECT * FROM treinos WHERE userOwnerEmail = :email")
+    suspend fun getAllTreinos(email: String): List<TreinoEntity>
     @Query("SELECT * FROM treinos WHERE id = :treinoId")
     suspend fun getTreinoById(treinoId: Long): TreinoEntity?
     @Update
@@ -38,8 +38,9 @@ interface TreinoDao {
     suspend fun updateTreinoNota(nota: TreinoNota)
     @Delete
     suspend fun deleteTreinoNota(nota: TreinoNota)
-    @Query("SELECT * FROM treino_notas WHERE divisaoId = :divisaoId")
-    suspend fun getNotasByDivisaoId(divisaoId: Long): List<TreinoNota>
     @Delete
     suspend fun deleteTreinoNotas(notas: List<TreinoNota>)
+
+    @Query("SELECT * FROM treino_notas WHERE divisaoId = :divisaoId AND userOwnerEmail = :email")
+    suspend fun getNotasByDivisaoId(divisaoId: Long, email: String): List<TreinoNota>
 }

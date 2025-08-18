@@ -1,4 +1,4 @@
-// Garanta que o seu arquivo DivisaoDetalheActivity.kt está assim:
+// Substitua o conteúdo COMPLETO do seu arquivo DivisaoDetalheActivity.kt
 package com.apol.myapplication
 
 import android.os.Bundle
@@ -12,8 +12,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
-import com.apol.myapplication.AppDatabase
-import com.apol.myapplication.R
 import com.apol.myapplication.data.model.TreinoNota
 import com.apol.myapplication.data.model.TreinoNotaAdapter
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -25,6 +23,7 @@ class DivisaoDetalheActivity : AppCompatActivity() {
     private lateinit var notaAdapter: TreinoNotaAdapter
     private val listaDeNotas = mutableListOf<TreinoNota>()
     private var divisaoId: Long = -1L
+    private var emailUsuarioLogado: String? = null // Para saber quem é o dono
 
     private var modoExclusaoAtivo = false
     private lateinit var btnApagarNotas: ImageButton
@@ -42,6 +41,16 @@ class DivisaoDetalheActivity : AppCompatActivity() {
         btnApagarNotas = findViewById(R.id.btn_apagar_notas)
         fabAddNota = findViewById(R.id.fab_add_exercicio)
 
+        // Pega o e-mail do usuário logado
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
+
+        if (emailUsuarioLogado == null) {
+            Toast.makeText(this, "Erro de sessão. Faça login novamente.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
         setupRecyclerView()
         setupListeners()
         carregarNotas()
@@ -57,7 +66,8 @@ class DivisaoDetalheActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewExercicios)
-        notaAdapter = TreinoNotaAdapter(listaDeNotas,
+        notaAdapter = TreinoNotaAdapter(
+            notas = listaDeNotas,
             onItemClick = { nota ->
                 if (modoExclusaoAtivo) {
                     toggleSelecao(nota)
@@ -90,14 +100,41 @@ class DivisaoDetalheActivity : AppCompatActivity() {
     }
 
     private fun carregarNotas() {
-        lifecycleScope.launch {
-            val notasDoBanco = db.treinoDao().getNotasByDivisaoId(divisaoId)
-            runOnUiThread {
-                notaAdapter.submitList(notasDoBanco)
+        emailUsuarioLogado?.let { email ->
+            lifecycleScope.launch {
+                // Passa o e-mail para filtrar os resultados
+                val notasDoBanco = db.treinoDao().getNotasByDivisaoId(divisaoId, email)
+                runOnUiThread {
+                    notaAdapter.submitList(notasDoBanco)
+                }
             }
         }
     }
 
+    private fun exibirDialogoCriarNota() {
+        emailUsuarioLogado?.let { email ->
+            val editText = EditText(this).apply { hint = "Título (ex: KM corridos, Anotações...)" }
+            AlertDialog.Builder(this)
+                .setTitle("Nova Anotação de Treino")
+                .setView(editText)
+                .setPositiveButton("Criar") { _, _ ->
+                    val titulo = editText.text.toString().trim()
+                    if (titulo.isNotEmpty()) {
+                        lifecycleScope.launch {
+                            // CORREÇÃO: Passa o e-mail do dono ao criar a nota
+                            val novaNota = TreinoNota(userOwnerEmail = email, divisaoId = divisaoId, titulo = titulo)
+                            db.treinoDao().insertTreinoNota(novaNota)
+                            carregarNotas()
+                        }
+                    }
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
+        }
+    }
+
+    // As funções abaixo (ativarModoExclusao, exibirDialogoEditarNota, etc.)
+    // já estão corretas e não precisam de mudança.
     private fun ativarModoExclusao(primeiraNota: TreinoNota) {
         modoExclusaoAtivo = true
         notaAdapter.modoExclusaoAtivo = true
@@ -131,24 +168,6 @@ class DivisaoDetalheActivity : AppCompatActivity() {
                     carregarNotas()
                 }
                 desativarModoExclusao()
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
-    private fun exibirDialogoCriarNota() {
-        val editText = EditText(this).apply { hint = "Título (ex: KM corridos, Anotações...)" }
-        AlertDialog.Builder(this)
-            .setTitle("Nova Anotação de Treino")
-            .setView(editText)
-            .setPositiveButton("Criar") { _, _ ->
-                val titulo = editText.text.toString().trim()
-                if (titulo.isNotEmpty()) {
-                    lifecycleScope.launch {
-                        db.treinoDao().insertTreinoNota(TreinoNota(divisaoId = divisaoId, titulo = titulo))
-                        carregarNotas()
-                    }
-                }
             }
             .setNegativeButton("Cancelar", null)
             .show()

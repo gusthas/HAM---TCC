@@ -19,6 +19,7 @@ import androidx.room.Ignore
 data class DivisaoTreino(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    var userOwnerEmail: String,
     val treinoId: Long, // Chave estrangeira para ligar à TreinoEntity
     var nome: String, // "Segunda-feira", "A", ou um nome personalizado como "Peito e Tríceps"
     val ordem: Int // Para manter a ordem (0 para Domingo, 1 para Segunda... ou 0 para A, 1 para B...)
