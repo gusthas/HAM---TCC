@@ -1,9 +1,5 @@
-// Substitua o conteúdo COMPLETO do seu arquivo HabitsAdapter.kt
 package com.apol.myapplication
 
-import android.content.Context
-import android.graphics.*
-import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,26 +8,40 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.apol.myapplication.data.model.HabitUI // MUDANÇA IMPORTANTE AQUI
 
 class HabitsAdapter(
-    private var habitList: MutableList<Habit>, // O parâmetro que a Activity vai passar
-    private val onItemClick: (Habit) -> Unit,
-    private val onMarkDone: (Habit) -> Unit,
-    private val onUndoDone: (Habit) -> Unit,
-    private val onToggleFavorite: (Habit) -> Unit
+    // Funções agora recebem o modelo de UI: HabitUI
+    private val onItemClick: (HabitUI) -> Unit,
+    private val onItemLongClick: (HabitUI) -> Unit,
+    private val onMarkDone: (HabitUI) -> Unit,
+    private val onUndoDone: (HabitUI) -> Unit,
+    private val onToggleFavorite: (HabitUI) -> Unit
 ) : RecyclerView.Adapter<HabitsAdapter.HabitViewHolder>() {
 
+    private var habitList: MutableList<HabitUI> = mutableListOf()
     var modoExclusaoAtivo: Boolean = false
 
-    fun submitList(novaLista: List<Habit>) {
+    fun submitList(novaLista: List<HabitUI>) {
         habitList.clear()
         habitList.addAll(novaLista)
         notifyDataSetChanged()
     }
 
-    fun getSelecionados(): List<Habit> = habitList.filter { it.isSelected }
-    fun limparSelecao() { habitList.forEach { it.isSelected = false } }
-    fun getHabitAt(position: Int): Habit? = habitList.getOrNull(position)
+    fun toggleSelecao(habit: HabitUI) {
+        val habitNaLista = habitList.find { it.id == habit.id }
+        habitNaLista?.let {
+            it.isSelected = !it.isSelected
+            notifyItemChanged(habitList.indexOf(it))
+        }
+    }
+
+    fun getSelecionados(): List<HabitUI> = habitList.filter { it.isSelected }
+
+    fun limparSelecao() {
+        habitList.forEach { it.isSelected = false }
+        notifyDataSetChanged()
+    }
 
     class HabitViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val icone: ImageView = itemView.findViewById(R.id.icone_habito)
@@ -52,18 +62,10 @@ class HabitsAdapter(
         val habit = habitList[position]
         val context = holder.itemView.context
 
-        val emoji = (context as? habitos)?.extrairEmoji(habit.name) ?: ""
-        val nomeSemEmoji = (context as? habitos)?.removerEmoji(habit.name) ?: ""
-        holder.nome.text = nomeSemEmoji
-
-        if (emoji.isNotEmpty() && context is habitos) {
-            holder.icone.setImageDrawable(context.TextDrawable(context, emoji))
-        } else {
-            holder.icone.setImageResource(R.drawable.ic_habits)
-        }
-
+        holder.nome.text = habit.name
         holder.streakDays.text = "${habit.streakDays} dias seguidos"
         holder.message.text = habit.message
+        holder.icone.setImageResource(R.drawable.ic_habits)
 
         if (habit.count > 0) {
             holder.btnCheck.visibility = View.GONE
@@ -81,6 +83,10 @@ class HabitsAdapter(
         holder.itemView.background = ContextCompat.getDrawable(context, background)
 
         holder.itemView.setOnClickListener { onItemClick(habit) }
+        holder.itemView.setOnLongClickListener {
+            onItemLongClick(habit)
+            true
+        }
         holder.btnFavorite.setOnClickListener { onToggleFavorite(habit) }
         holder.btnCheck.setOnClickListener { onMarkDone(habit) }
         holder.btnCheckDone.setOnClickListener { onUndoDone(habit) }

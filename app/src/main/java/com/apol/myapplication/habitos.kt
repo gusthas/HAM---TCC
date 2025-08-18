@@ -2,9 +2,8 @@ package com.apol.myapplication
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.*
+import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -20,7 +19,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.apol.myapplication.data.model.*
+import com.apol.myapplication.AppDatabase
+import com.apol.myapplication.data.model.Habito
+import com.apol.myapplication.data.model.HabitUI
+import com.apol.myapplication.data.model.HabitoProgresso
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -35,14 +37,17 @@ class habitos : AppCompatActivity() {
     private lateinit var habitsTitle: TextView
     private val allDays = setOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
 
-    private val listaDeHabitosDisplay = mutableListOf<Habit>()
+    // --- VARIÁVEIS PARA O MODO DE EXCLUSÃO ---
+    private var modoExclusaoAtivo = false
+    private lateinit var btnDeleteSelected: ImageButton
+    private lateinit var clickOutsideView: View
+    private lateinit var fabAddHabit: FloatingActionButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_habitos)
 
         db = AppDatabase.getDatabase(this)
-
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
 
@@ -52,6 +57,9 @@ class habitos : AppCompatActivity() {
         }
 
         habitsTitle = findViewById(R.id.habits_title)
+        btnDeleteSelected = findViewById(R.id.btn_delete_selected)
+        clickOutsideView = findViewById(R.id.click_outside_view)
+        fabAddHabit = findViewById(R.id.fab_add_habit)
 
         setupRecyclerView()
         setupListeners()
@@ -60,24 +68,41 @@ class habitos : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (modoExclusaoAtivo) {
+            desativarModoExclusao()
+        }
         atualizarTelaDeHabitos()
+    }
+
+    override fun onBackPressed() {
+        if (modoExclusaoAtivo) {
+            desativarModoExclusao()
+        } else {
+            super.onBackPressed()
+        }
     }
 
     private fun atualizarTelaDeHabitos() {
         habitsTitle.text = if (mostrandoHabitosBons) "Seus Hábitos Bons" else "Seus Hábitos Ruins"
-
-        // Esta linha define o ícone. O fundo e a forma vêm do XML.
         findViewById<ImageButton>(R.id.button_toggle_mode)?.setImageResource(R.drawable.ic_refresh)
-
         carregarHabitosDoBanco()
     }
 
-    // ... (O resto do seu código continua o mesmo de antes)
     private fun setupRecyclerView() {
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewHabits)
         habitsAdapter = HabitsAdapter(
-            listaDeHabitosDisplay,
-            onItemClick = { habit -> mostrarOpcoesHabito(habit) },
+            onItemClick = { habit ->
+                if (modoExclusaoAtivo) {
+                    toggleSelecao(habit)
+                } else {
+                    mostrarOpcoesHabito(habit)
+                }
+            },
+            onItemLongClick = { habit ->
+                if (!modoExclusaoAtivo) {
+                    ativarModoExclusao(habit)
+                }
+            },
             onMarkDone = { habito -> marcarHabito(habito, true) },
             onUndoDone = { habito -> marcarHabito(habito, false) },
             onToggleFavorite = { habito -> toggleFavorito(habito) }
@@ -87,30 +112,99 @@ class habitos : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        findViewById<FloatingActionButton>(R.id.fab_add_habit).setOnClickListener {
-            mostrarDialogoNovoHabito()
+        fabAddHabit.setOnClickListener {
+            if (!modoExclusaoAtivo) {
+                mostrarDialogoNovoHabito()
+            }
         }
+
         findViewById<ImageButton>(R.id.button_toggle_mode)?.setOnClickListener {
+            if (modoExclusaoAtivo) desativarModoExclusao()
             mostrandoHabitosBons = !mostrandoHabitosBons
             atualizarTelaDeHabitos()
+        }
+
+        btnDeleteSelected.setOnClickListener {
+            val selecionados = habitsAdapter.getSelecionados()
+            if (selecionados.isNotEmpty()) {
+                confirmarExclusao(selecionados)
+            }
+        }
+
+        clickOutsideView.setOnClickListener {
+            desativarModoExclusao()
+        }
+    }
+
+    private fun ativarModoExclusao(primeiroItem: HabitUI) {
+        modoExclusaoAtivo = true
+        habitsAdapter.modoExclusaoAtivo = true
+        fabAddHabit.visibility = View.GONE
+        btnDeleteSelected.visibility = View.VISIBLE
+        clickOutsideView.visibility = View.VISIBLE
+        toggleSelecao(primeiroItem)
+    }
+
+    private fun desativarModoExclusao() {
+        modoExclusaoAtivo = false
+        habitsAdapter.modoExclusaoAtivo = false
+        habitsAdapter.limparSelecao()
+        fabAddHabit.visibility = View.VISIBLE
+        btnDeleteSelected.visibility = View.GONE
+        clickOutsideView.visibility = View.GONE
+    }
+
+    private fun toggleSelecao(habit: HabitUI) {
+        habitsAdapter.toggleSelecao(habit)
+        if (habitsAdapter.getSelecionados().isEmpty() && modoExclusaoAtivo) {
+            desativarModoExclusao()
+        }
+    }
+
+    private fun confirmarExclusao(habitosParaApagar: List<HabitUI>) {
+        AlertDialog.Builder(this)
+            .setTitle("Excluir Hábitos")
+            .setMessage("Tem certeza que deseja apagar ${habitosParaApagar.size} hábito(s)?")
+            .setPositiveButton("Excluir") { _, _ ->
+                executarExclusao(habitosParaApagar)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun executarExclusao(habitosParaApagar: List<HabitUI>) {
+        lifecycleScope.launch {
+            val idsParaApagar = habitosParaApagar.mapNotNull { it.id.toLongOrNull() }
+            if (idsParaApagar.isNotEmpty()) {
+                db.habitoDao().deleteHabitosByIds(idsParaApagar)
+            }
+            runOnUiThread {
+                Toast.makeText(this@habitos, "Hábitos apagados", Toast.LENGTH_SHORT).show()
+                desativarModoExclusao()
+                carregarHabitosDoBanco()
+            }
         }
     }
 
     private fun carregarHabitosDoBanco() {
         emailUsuarioLogado?.let { email ->
             lifecycleScope.launch {
-                val habitosDoBanco = db.habitoDao().getHabitosByUser(email)
+                val habitosDoBanco: List<Habito> = db.habitoDao().getHabitosByUser(email)
                 val habitosFiltrados = habitosDoBanco.filter { it.isGoodHabit == mostrandoHabitosBons }
                 val hoje = getHojeString()
 
+                // Converte a lista de Habito (BD) para HabitUI (Tela)
                 val listaParaAdapter = habitosFiltrados.map { habitoDB ->
                     val progressos = db.habitoDao().getProgressoForHabito(habitoDB.id)
                     val concluidoHoje = progressos.any { it.data == hoje }
                     val sequencia = calcularSequencia(progressos)
-                    Habit(
-                        id = habitoDB.id.toString(), name = habitoDB.nome,
-                        streakDays = sequencia, message = gerarMensagemMotivacional(sequencia),
-                        count = if (concluidoHoje) 1 else 0, isFavorited = habitoDB.isFavorito
+                    HabitUI(
+                        id = habitoDB.id.toString(),
+                        name = habitoDB.nome,
+                        streakDays = sequencia,
+                        message = gerarMensagemMotivacional(sequencia),
+                        count = if (concluidoHoje) 1 else 0,
+                        isFavorited = habitoDB.isFavorito
                     )
                 }
 
@@ -125,13 +219,15 @@ class habitos : AppCompatActivity() {
         emailUsuarioLogado?.let { email ->
             lifecycleScope.launch {
                 val habitosExistentes = db.habitoDao().getHabitosByUser(email)
-                if (habitosExistentes.any { removerEmoji(it.nome).equals(removerEmoji(nome), ignoreCase = true) }) {
+                if (habitosExistentes.any { it.nome.equals(nome, ignoreCase = true) }) {
                     runOnUiThread { Toast.makeText(this@habitos, "Hábito '$nome' já existe.", Toast.LENGTH_SHORT).show() }
                     return@launch
                 }
 
+                // Cria uma instância de Habito (a entidade do banco de dados)
                 val novoHabito = Habito(
-                    userOwnerEmail = email, nome = nome,
+                    userOwnerEmail = email,
+                    nome = nome,
                     diasProgramados = diasProgramados.joinToString(","),
                     isFavorito = false,
                     isGoodHabit = mostrandoHabitosBons
@@ -142,7 +238,7 @@ class habitos : AppCompatActivity() {
         }
     }
 
-    private fun marcarHabito(habit: Habit, concluir: Boolean) {
+    private fun marcarHabito(habit: HabitUI, concluir: Boolean) {
         val habitoId = habit.id.toLongOrNull() ?: return
         val hoje = getHojeString()
         lifecycleScope.launch {
@@ -155,7 +251,7 @@ class habitos : AppCompatActivity() {
         }
     }
 
-    private fun toggleFavorito(habit: Habit) {
+    private fun toggleFavorito(habit: HabitUI) {
         val habitoId = habit.id.toLongOrNull() ?: return
         emailUsuarioLogado?.let { email ->
             lifecycleScope.launch {
@@ -163,7 +259,7 @@ class habitos : AppCompatActivity() {
                 val habitoDB = habitosDoBanco.find { it.id == habitoId }
 
                 habitoDB?.let {
-                    val totalFavoritos = habitosDoBanco.count { it.isFavorito }
+                    val totalFavoritos = habitosDoBanco.count { it.isFavorito && it.id != it.id }
                     if (!it.isFavorito && totalFavoritos >= 3) {
                         runOnUiThread { Toast.makeText(this@habitos, "Você pode favoritar no máximo 3 hábitos.", Toast.LENGTH_SHORT).show() }
                         return@launch
@@ -171,27 +267,17 @@ class habitos : AppCompatActivity() {
 
                     it.isFavorito = !it.isFavorito
                     db.habitoDao().updateHabito(it)
-                    saveFavoritedHabitsToPrefs()
                     carregarHabitosDoBanco()
                 }
             }
         }
     }
 
-    private suspend fun saveFavoritedHabitsToPrefs() {
-        emailUsuarioLogado?.let { email ->
-            val habitosDoBanco = db.habitoDao().getHabitosByUser(email)
-            val favoritedNames = habitosDoBanco.filter { it.isFavorito }.map { it.nome }.toSet()
-            val prefs = getSharedPreferences("habitos_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putStringSet("favorited_habits", favoritedNames).apply()
-        }
-    }
-
-    private fun mostrarOpcoesHabito(habit: Habit) {
+    private fun mostrarOpcoesHabito(habit: HabitUI) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_opcoes_habito, null)
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        dialog.findViewById<TextView>(R.id.dialog_options_title)?.text = removerEmoji(habit.name)
+        dialog.findViewById<TextView>(R.id.dialog_options_title)?.text = habit.name
 
         dialog.findViewById<Button>(R.id.btn_ver_progresso)?.setOnClickListener {
             val intent = Intent(this, activity_progresso_habito::class.java)
@@ -243,7 +329,6 @@ class habitos : AppCompatActivity() {
 
     private fun calcularSequencia(progressos: List<HabitoProgresso>): Int {
         if (progressos.isEmpty()) return 0
-
         val datasConcluidas = progressos.map { it.data }.toSet()
         var sequencia = 0
         val calendar = Calendar.getInstance()
@@ -268,35 +353,6 @@ class habitos : AppCompatActivity() {
             diasSeguidos in 2..6 -> "$diasSeguidos dias! Mantenha o ritmo."
             diasSeguidos >= 7 -> "Uma semana! Incrível!"
             else -> "Continue firme!"
-        }
-    }
-
-    fun extrairEmoji(texto: String): String {
-        val regex = Regex("^\\p{So}")
-        return regex.find(texto)?.value ?: ""
-    }
-
-    fun removerEmoji(texto: String): String {
-        val regex = Regex("^\\p{So}\\s*")
-        return texto.replaceFirst(regex, "")
-    }
-
-    fun TextDrawable(context: Context, text: String): Drawable {
-        return object : Drawable() {
-            private val paint = Paint()
-            init {
-                paint.color = Color.WHITE; paint.textSize = 64f; paint.isAntiAlias = true
-                paint.textAlign = Paint.Align.CENTER; paint.typeface = Typeface.DEFAULT_BOLD
-            }
-            override fun draw(canvas: Canvas) {
-                val bounds = bounds
-                val x = bounds.centerX().toFloat()
-                val y = bounds.centerY() - (paint.descent() + paint.ascent()) / 2
-                canvas.drawText(text, x, y, paint)
-            }
-            override fun setAlpha(alpha: Int) { paint.alpha = alpha }
-            override fun getOpacity(): Int = PixelFormat.TRANSPARENT
-            override fun setColorFilter(colorFilter: ColorFilter?) { paint.colorFilter = colorFilter }
         }
     }
 
