@@ -2,9 +2,11 @@ package com.apol.myapplication
 
 import NotesAdapter
 import android.app.AlarmManager
+import android.app.DatePickerDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -35,6 +37,7 @@ import com.apol.myapplication.data.model.TipoLembrete
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.Locale
 
 class anotacoes : AppCompatActivity() {
 
@@ -57,20 +60,19 @@ class anotacoes : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_anotacoes)
-
+    /*
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
-        }
+        }*/
 
         prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
 
         if (emailUsuarioLogado == null) {
             Toast.makeText(this, "Erro de sessão. Faça login novamente.", Toast.LENGTH_SHORT).show()
-            finish()
-            return
+            finish(); return
         }
 
         viewModel = ViewModelProvider(this).get(NotesViewModel::class.java)
@@ -263,8 +265,8 @@ class anotacoes : AppCompatActivity() {
 
     private fun mostrarDialogoCriarBloco() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_selecionar_bloco, null)
-        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent).setView(dialogView).create()
+
         val adicionarBloco: (String) -> Unit = { nomeBloco ->
             viewModel.adicionarBloco(Bloco(userOwnerEmail = "", nome = nomeBloco))
             dialog.dismiss()
@@ -279,23 +281,35 @@ class anotacoes : AppCompatActivity() {
 
     private fun openEditDialog(note: Note) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_edit_note, null)
-        val editText = dialogView.findViewById<EditText>(R.id.editNoteDialog)
-        editText.setText(note.text)
-        AlertDialog.Builder(this)
-            .setTitle("Editar Anotação")
+        val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent)
             .setView(dialogView)
-            .setPositiveButton("Salvar") { _, _ ->
-                val newText = editText.text.toString().trim()
-                if (newText.isNotEmpty()) {
-                    viewModel.updateNote(note.copy(text = newText))
-                }
+            .create()
+
+        val editText = dialogView.findViewById<EditText>(R.id.editNoteDialog)
+        val btnSalvar = dialogView.findViewById<Button>(R.id.btn_salvar_edit_note)
+        val btnCancelar = dialogView.findViewById<Button>(R.id.btn_cancelar_edit_note)
+
+        editText.setText(note.text)
+
+        btnSalvar.setOnClickListener {
+            val newText = editText.text.toString().trim()
+            if (newText.isNotEmpty()) {
+                viewModel.updateNote(note.copy(text = newText))
             }
-            .setNegativeButton("Cancelar", null)
-            .show()
+            dialog.dismiss()
+        }
+
+        btnCancelar.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun abrirDialogEditarBloco(bloco: Bloco) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_editar_bloco, null)
+        val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent).setView(dialogView).create()
+
         val tituloBloco = dialogView.findViewById<TextView>(R.id.titulo_bloco)
         val inputSubtitulo = dialogView.findViewById<EditText>(R.id.input_subtitulo)
         val inputAnotacoes = dialogView.findViewById<EditText>(R.id.input_anotacoes)
@@ -303,8 +317,6 @@ class anotacoes : AppCompatActivity() {
         val btnConfigurarLembrete = dialogView.findViewById<Button>(R.id.btn_configurar_lembrete)
         val btnCancelar = dialogView.findViewById<Button>(R.id.botao_cancelar)
         val btnSalvar = dialogView.findViewById<Button>(R.id.botao_salvar)
-        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
         val blocoTemporario = bloco.copy()
         tituloBloco.text = blocoTemporario.nome
@@ -324,22 +336,16 @@ class anotacoes : AppCompatActivity() {
         btnCancelar.setOnClickListener { dialog.dismiss() }
 
         btnSalvar.setOnClickListener {
-            val novoSubtitulo = inputSubtitulo.text.toString().trim()
-            val novaAnotacao = inputAnotacoes.text.toString().trim()
-            val novaMensagem = inputMensagemNotificacao.text.toString().trim()
-
             val blocoAtualizado = bloco.copy(
-                subtitulo = novoSubtitulo,
-                anotacao = novaAnotacao,
-                mensagemNotificacao = novaMensagem,
+                subtitulo = inputSubtitulo.text.toString().trim(),
+                anotacao = inputAnotacoes.text.toString().trim(),
+                mensagemNotificacao = inputMensagemNotificacao.text.toString().trim(),
                 tipoLembrete = blocoTemporario.tipoLembrete,
                 diasLembrete = blocoTemporario.diasLembrete,
                 horariosLembrete = blocoTemporario.horariosLembrete,
                 segundosLembrete = blocoTemporario.segundosLembrete
             )
-
             viewModel.updateBloco(blocoAtualizado)
-
             cancelarLembretesParaBloco(blocoAtualizado)
             if (blocoAtualizado.tipoLembrete != TipoLembrete.NENHUM) {
                 agendarLembretesParaBloco(blocoAtualizado)
@@ -376,69 +382,113 @@ class anotacoes : AppCompatActivity() {
             intent.removeExtra("abrir_selecao_blocos")
         }
     }
-
     private fun abrirDialogConfigurarLembrete(bloco: Bloco, onSave: (Bloco) -> Unit) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_configurar_lembrete, null)
-        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent)
+            .setView(dialogView)
+            .create()
+
+        // Referências às views do novo layout
         val radioGroup = dialogView.findViewById<RadioGroup>(R.id.radio_group_tipo_lembrete)
+        val radioNenhum = dialogView.findViewById<RadioButton>(R.id.radio_nenhum)
         val radioDiario = dialogView.findViewById<RadioButton>(R.id.radio_diario)
         val radioMensal = dialogView.findViewById<RadioButton>(R.id.radio_mensal)
-        val radioSegundosTeste = dialogView.findViewById<RadioButton>(R.id.radio_segundos_teste)
-        val layoutDias = dialogView.findViewById<View>(R.id.layout_input_dias)
-        val inputDias = dialogView.findViewById<EditText>(R.id.input_dias_lembrete)
-        val layoutHorarios = dialogView.findViewById<View>(R.id.layout_input_horarios)
-        val inputHorarios = dialogView.findViewById<EditText>(R.id.input_horarios_lembrete)
-        val layoutSegundos = dialogView.findViewById<View>(R.id.layout_input_segundos)
-        val inputSegundos = dialogView.findViewById<EditText>(R.id.input_segundos_lembrete)
+        val layoutDia = dialogView.findViewById<View>(R.id.layout_seletor_dia)
+        val textDia = dialogView.findViewById<TextView>(R.id.text_dia_selecionado)
+        val layoutHora = dialogView.findViewById<View>(R.id.layout_seletor_hora)
+        val textHora = dialogView.findViewById<TextView>(R.id.text_hora_selecionada)
+        val btnSalvar = dialogView.findViewById<Button>(R.id.btn_salvar_lembrete)
+        val btnCancelar = dialogView.findViewById<Button>(R.id.btn_cancelar_lembrete)
 
-        fun updateUi(tipo: TipoLembrete) {
-            layoutDias.visibility = if (tipo == TipoLembrete.MENSAL) View.VISIBLE else View.GONE
-            layoutHorarios.visibility = if (tipo == TipoLembrete.DIARIO || tipo == TipoLembrete.MENSAL) View.VISIBLE else View.GONE
-            layoutSegundos.visibility = if (tipo == TipoLembrete.SEGUNDOS_TESTE) View.VISIBLE else View.GONE
-        }
-        when (bloco.tipoLembrete) {
-            TipoLembrete.DIARIO -> radioDiario.isChecked = true
-            TipoLembrete.MENSAL -> radioMensal.isChecked = true
-            TipoLembrete.SEGUNDOS_TESTE -> radioSegundosTeste.isChecked = true
-            else -> {}
-        }
-        updateUi(bloco.tipoLembrete)
-        inputDias.setText(bloco.diasLembrete.joinToString(", "))
-        inputHorarios.setText(bloco.horariosLembrete.joinToString(", "))
-        inputSegundos.setText(bloco.segundosLembrete?.toString() ?: "")
-        radioGroup.setOnCheckedChangeListener { _, checkedId ->
-            when (checkedId) {
-                R.id.radio_diario -> updateUi(TipoLembrete.DIARIO)
-                R.id.radio_mensal -> updateUi(TipoLembrete.MENSAL)
-                R.id.radio_segundos_teste -> updateUi(TipoLembrete.SEGUNDOS_TESTE)
+        // Variáveis para guardar a seleção do usuário
+        var diaSelecionado = bloco.diasLembrete.firstOrNull() ?: Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+        var horaSelecionada = 0
+        var minutoSelecionado = 0
+
+        if (bloco.horariosLembrete.isNotEmpty()) {
+            val parts = bloco.horariosLembrete.first().split(":")
+            if (parts.size == 2) {
+                horaSelecionada = parts[0].toInt()
+                minutoSelecionado = parts[1].toInt()
             }
         }
-        dialogView.findViewById<Button>(R.id.btn_salvar_lembrete).setOnClickListener {
+
+        // Função para atualizar a UI do diálogo
+        fun updateUi(tipo: TipoLembrete) {
+            layoutDia.visibility = if (tipo == TipoLembrete.MENSAL) View.VISIBLE else View.GONE
+            layoutHora.visibility = if (tipo == TipoLembrete.DIARIO || tipo == TipoLembrete.MENSAL) View.VISIBLE else View.GONE
+        }
+
+        // Define o estado inicial do diálogo com base nos dados salvos
+        textDia.text = "Dia $diaSelecionado"
+        textHora.text = String.format(Locale.getDefault(), "%02d:%02d", horaSelecionada, minutoSelecionado)
+        when (bloco.tipoLembrete) {
+            TipoLembrete.NENHUM -> radioNenhum.isChecked = true
+            TipoLembrete.DIARIO -> radioDiario.isChecked = true
+            TipoLembrete.MENSAL -> radioMensal.isChecked = true
+            else -> radioNenhum.isChecked = true
+        }
+        updateUi(bloco.tipoLembrete)
+
+        // Listeners para os botões de rádio
+        radioGroup.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.radio_nenhum -> updateUi(TipoLembrete.NENHUM)
+                R.id.radio_diario -> updateUi(TipoLembrete.DIARIO)
+                R.id.radio_mensal -> updateUi(TipoLembrete.MENSAL)
+            }
+        }
+
+        // Abre o seletor de DIA
+        textDia.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            DatePickerDialog(this, R.style.AppTheme_Dialog_Picker, { _, _, _, dayOfMonth ->
+                diaSelecionado = dayOfMonth
+                textDia.text = "Dia $diaSelecionado"
+            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
+        }
+
+        // Abre o seletor de HORA
+        textHora.setOnClickListener {
+            TimePickerDialog(
+                this,
+                R.style.AppTheme_TimePickerDialog, // <-- APLICA O NOVO TEMA
+                { _, hourOfDay, minute ->
+                    horaSelecionada = hourOfDay
+                    minutoSelecionado = minute
+                    textHora.text = String.format(Locale.getDefault(), "%02d:%02d", horaSelecionada, minutoSelecionado)
+                },
+                horaSelecionada,
+                minutoSelecionado,
+                true
+            ).show()
+        }
+
+        btnSalvar.setOnClickListener {
             val blocoConfigurado = bloco.copy()
             when (radioGroup.checkedRadioButtonId) {
                 R.id.radio_diario -> {
-                    blocoConfigurado.tipoLembrete = TipoLembrete.DIARIO; blocoConfigurado.diasLembrete = emptyList(); blocoConfigurado.segundosLembrete = null
+                    blocoConfigurado.tipoLembrete = TipoLembrete.DIARIO
+                    blocoConfigurado.diasLembrete = emptyList()
+                    blocoConfigurado.horariosLembrete = listOf(String.format(Locale.getDefault(), "%02d:%02d", horaSelecionada, minutoSelecionado))
                 }
                 R.id.radio_mensal -> {
-                    blocoConfigurado.tipoLembrete = TipoLembrete.MENSAL; blocoConfigurado.diasLembrete = inputDias.text.toString().split(',').mapNotNull { it.trim().toIntOrNull()?.coerceIn(1, 31) }; blocoConfigurado.segundosLembrete = null
+                    blocoConfigurado.tipoLembrete = TipoLembrete.MENSAL
+                    blocoConfigurado.diasLembrete = listOf(diaSelecionado)
+                    blocoConfigurado.horariosLembrete = listOf(String.format(Locale.getDefault(), "%02d:%02d", horaSelecionada, minutoSelecionado))
                 }
-                R.id.radio_segundos_teste -> {
-                    blocoConfigurado.tipoLembrete = TipoLembrete.SEGUNDOS_TESTE; blocoConfigurado.segundosLembrete = inputSegundos.text.toString().toLongOrNull(); blocoConfigurado.diasLembrete = emptyList(); blocoConfigurado.horariosLembrete = emptyList()
+                else -> { // Nenhum
+                    blocoConfigurado.tipoLembrete = TipoLembrete.NENHUM
+                    blocoConfigurado.diasLembrete = emptyList()
+                    blocoConfigurado.horariosLembrete = emptyList()
                 }
-                else -> blocoConfigurado.tipoLembrete = TipoLembrete.NENHUM
-            }
-            if (blocoConfigurado.tipoLembrete == TipoLembrete.DIARIO || blocoConfigurado.tipoLembrete == TipoLembrete.MENSAL) {
-                blocoConfigurado.horariosLembrete = inputHorarios.text.toString().split(',').map { it.trim() }.filter { it.matches(Regex("\\d{1,2}:\\d{2}")) }
             }
             onSave(blocoConfigurado)
             dialog.dismiss()
         }
-        dialogView.findViewById<Button>(R.id.btn_remover_lembrete).setOnClickListener {
-            val blocoLimpo = bloco.copy(tipoLembrete = TipoLembrete.NENHUM, diasLembrete = emptyList(), horariosLembrete = emptyList(), segundosLembrete = null)
-            onSave(blocoLimpo)
-            dialog.dismiss()
-        }
+
+        btnCancelar.setOnClickListener { dialog.dismiss() }
+
         dialog.show()
     }
 

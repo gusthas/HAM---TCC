@@ -72,12 +72,15 @@ class habitos : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
+
         if (modoExclusaoAtivo) {
             desativarModoExclusao()
         } else {
             super.onBackPressed()
         }
+        finishAffinity()
     }
+
 
     private fun atualizarTelaDeHabitos() {
         habitsTitle.text = if (mostrandoHabitosBons) "Seus Hábitos Bons" else "Seus Hábitos Ruins"

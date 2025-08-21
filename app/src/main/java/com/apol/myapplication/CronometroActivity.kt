@@ -71,16 +71,21 @@ class CronometroActivity : AppCompatActivity() {
 
     private fun mostrarDialogoDefinirTempo() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_set_time, null)
+        // Usa o estilo customizado para o fundo transparente
+        val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent)
+            .setView(dialogView)
+            .create()
+
+        // Encontra os componentes no layout customizado
         val pickerHours = dialogView.findViewById<NumberPicker>(R.id.picker_hours)
         val pickerMinutes = dialogView.findViewById<NumberPicker>(R.id.picker_minutes)
         val pickerSeconds = dialogView.findViewById<NumberPicker>(R.id.picker_seconds)
+        val btnOk = dialogView.findViewById<Button>(R.id.btn_ok_tempo)
+        val btnCancelar = dialogView.findViewById<Button>(R.id.btn_cancelar_tempo)
 
-        pickerHours.minValue = 0
-        pickerHours.maxValue = 23
-        pickerMinutes.minValue = 0
-        pickerMinutes.maxValue = 59
-        pickerSeconds.minValue = 0
-        pickerSeconds.maxValue = 59
+        pickerHours.minValue = 0; pickerHours.maxValue = 23
+        pickerMinutes.minValue = 0; pickerMinutes.maxValue = 59
+        pickerSeconds.minValue = 0; pickerSeconds.maxValue = 59
 
         pickerMinutes.setFormatter { i -> String.format("%02d", i) }
         pickerSeconds.setFormatter { i -> String.format("%02d", i) }
@@ -92,26 +97,21 @@ class CronometroActivity : AppCompatActivity() {
         pickerMinutes.value = currentMinutes.toInt()
         pickerSeconds.value = currentSeconds.toInt()
 
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setPositiveButton("OK") { _, _ ->
-                val hours = pickerHours.value
-                val minutes = pickerMinutes.value
-                val seconds = pickerSeconds.value
-                val newDuration = (hours * 3600000L) + (minutes * 60000L) + (seconds * 1000L)
+        // Configura os cliques dos botões customizados
+        btnOk.setOnClickListener {
+            val hours = pickerHours.value
+            val minutes = pickerMinutes.value
+            val seconds = pickerSeconds.value
+            timerDuration = (hours * 3600000L) + (minutes * 60000L) + (seconds * 1000L)
+            resetTimer()
+            dialog.dismiss()
+        }
 
-                timerDuration = newDuration
-                resetTimer()
-            }
-            .setNegativeButton("Cancelar", null)
-            .create()
+        btnCancelar.setOnClickListener {
+            dialog.dismiss()
+        }
 
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.show()
-
-        val roxoColor = resources.getColor(R.color.roxo, theme)
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(roxoColor)
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(roxoColor)
     }
 
     private fun startTimer() {

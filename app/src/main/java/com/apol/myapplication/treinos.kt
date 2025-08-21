@@ -10,6 +10,7 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -45,10 +46,9 @@ class treinos : AppCompatActivity() {
     // --- CICLO DE VIDA ---
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_treinos)
+        setContentView(R.layout.activity_treinos) // O layout agora controla tudo
 
         db = AppDatabase.getDatabase(this)
-
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
 
@@ -56,22 +56,20 @@ class treinos : AppCompatActivity() {
             finish(); return
         }
 
-        // --- Inicialização das Views ---
         recyclerViewTreinos = findViewById(R.id.recyclerViewTreinos)
         fabAddTreino = findViewById(R.id.fab_add_treino)
         btnApagarTreinos = findViewById(R.id.btn_apagar_treinos)
         clickOutsideView = findViewById(R.id.click_outside_view)
 
-        setupWindowInsets()
         setupNavigationBar()
         setupRecyclerView()
         setupListeners()
+
         verificarECriarTreinoSugerido()
     }
 
     override fun onResume() {
         super.onResume()
-        // Recarrega os treinos sempre que a tela fica visível
         carregarTreinos()
     }
 

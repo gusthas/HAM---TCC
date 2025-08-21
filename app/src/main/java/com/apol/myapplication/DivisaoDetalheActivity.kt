@@ -182,28 +182,46 @@ class DivisaoDetalheActivity : AppCompatActivity() {
 
     private fun exibirDialogoEditarNota(nota: TreinoNota) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_editar_nota_treino, null)
+
+        // Usa o estilo customizado para remover o fundo branco
+        val dialog = AlertDialog.Builder(this, R.style.Theme_HAM_Dialog_Transparent)
+            .setView(dialogView)
+            .create()
+
+        // Encontra os componentes no novo layout
         val tituloView = dialogView.findViewById<TextView>(R.id.titulo_dialogo_nota)
         val conteudoInput = dialogView.findViewById<EditText>(R.id.input_conteudo_nota)
+        val btnSalvar = dialogView.findViewById<Button>(R.id.btn_salvar_nota)
+        val btnCancelar = dialogView.findViewById<Button>(R.id.btn_cancelar_nota)
+        val btnApagar = dialogView.findViewById<Button>(R.id.btn_apagar_nota)
 
         tituloView.text = nota.titulo
         conteudoInput.setText(nota.conteudo)
 
-        AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setPositiveButton("Salvar") { _, _ ->
-                nota.conteudo = conteudoInput.text.toString().trim()
-                lifecycleScope.launch {
-                    db.treinoDao().updateTreinoNota(nota)
-                    carregarNotas()
-                }
+        // Configura o clique do botão Salvar
+        btnSalvar.setOnClickListener {
+            nota.conteudo = conteudoInput.text.toString().trim()
+            lifecycleScope.launch {
+                db.treinoDao().updateTreinoNota(nota)
+                carregarNotas()
             }
-            .setNegativeButton("Cancelar", null)
-            .setNeutralButton("Apagar") { _, _ ->
-                lifecycleScope.launch {
-                    db.treinoDao().deleteTreinoNota(nota)
-                    carregarNotas()
-                }
+            dialog.dismiss()
+        }
+
+        // Configura o clique do botão Cancelar
+        btnCancelar.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        // Configura o clique do botão Apagar
+        btnApagar.setOnClickListener {
+            lifecycleScope.launch {
+                db.treinoDao().deleteTreinoNota(nota)
+                carregarNotas()
             }
-            .show()
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 }

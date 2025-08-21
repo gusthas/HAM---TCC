@@ -20,22 +20,23 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Header -->
-    <!-- Header -->
+    <!-- Header (com padding para a barra de status) -->
+    <!-- Campo de nova anotação -->
+
     <LinearLayout
         android:id="@+id/header_notes"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
         android:layout_marginStart="32dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="32dp"
-        android:orientation="horizontal"
         android:gravity="center_vertical"
-        app:layout_constraintTop_toTopOf="parent"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Ícone do título -->
         <ImageView
             android:id="@+id/icon_header"
             android:layout_width="24dp"
@@ -44,7 +45,6 @@
             android:src="@drawable/ic_notes"
             app:tint="#DDFFFFFF" />
 
-        <!-- Texto do título -->
         <TextView
             android:id="@+id/textView26"
             android:layout_width="wrap_content"
@@ -55,8 +55,6 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-
-    <!-- Campo de nova anotação -->
     <LinearLayout
         android:id="@+id/new_note_box"
         android:layout_width="0dp"
@@ -67,8 +65,6 @@
         android:background="@drawable/rounded_semi_transparent"
         android:paddingStart="16dp"
         android:paddingEnd="8dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         app:layout_constraintTop_toBottomOf="@id/header_notes"
@@ -104,17 +100,18 @@
         android:id="@+id/button_delete_selected"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_delete"
-        android:tint="#DDFFFFFF"
-        android:visibility="gone"
         android:contentDescription="Apagar selecionados"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:src="@drawable/ic_delete"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@+id/header_notes"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/header_notes"
+        app:tint="#DDFFFFFF"
+        tools:visibility="visible" />
 
-    <!-- Área da lista com view clicável fora -->
+    <!-- Área da lista (com a sua estrutura FrameLayout funcional) -->
     <FrameLayout
         android:id="@+id/container_notes"
         android:layout_width="0dp"
@@ -124,31 +121,30 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- View transparente para detectar clique fora -->
         <View
             android:id="@+id/click_outside_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@android:color/transparent" />
 
-        <!-- RecyclerView de anotações -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerViewNotes"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="8dp"
+            android:paddingBottom="80dp"
             android:paddingTop="8dp" />
     </FrameLayout>
+
     <ImageButton
         android:id="@+id/button_toggle_mode"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="24dp"
         android:background="@drawable/circle_button_bg"
         android:src="@drawable/ic_switch"
-        android:tint="#DDFFFFFF"
+        app:tint="#DDFFFFFF"
         android:contentDescription="Alternar modo"
         app:layout_constraintBottom_toTopOf="@id/navigation_bar"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -162,7 +158,5 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
-
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

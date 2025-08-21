@@ -12,6 +12,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -36,19 +37,32 @@ class Bemvindouser : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_bemvindouser)
 
+        // --- ESTE É O BLOCO DE CÓDIGO QUE RESOLVE O PROBLEMA ---
+
+        setContentView(R.layout.activity_bemvindouser)
+    /*
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            // 2. Aplica o padding para o conteúdo não ficar embaixo das barras
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
-        }
+        } */
+        // --- FIM DO BLOCO DE CORREÇÃO ---
 
-        viewModel = ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory.getInstance(application)).get(NotesViewModel::class.java)
+        viewModel = ViewModelProvider(this).get(NotesViewModel::class.java)
         db = AppDatabase.getDatabase(this)
 
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         emailUsuarioLogado = prefs.getString("LOGGED_IN_USER_EMAIL", null)
+
+        if (emailUsuarioLogado == null) {
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            return
+        }
+
+        viewModel.setCurrentUser(emailUsuarioLogado!!)
 
         carregarDadosDoUsuarioEAtualizarTela()
         atualizarDataComSimbolo()
@@ -64,6 +78,7 @@ class Bemvindouser : AppCompatActivity() {
         carregarTop3Habitos()
         carregarTop3Blocos()
     }
+
 
     override fun onBackPressed() {
         super.onBackPressed()
